@@ -1,167 +1,169 @@
-/**************************************************************
- *  Mirror.cs
- *  3D ƒIƒuƒWƒFƒNƒg‚ÉƒAƒ^ƒbƒ`‚·‚é‚¾‚¯‚Å‹¾‰»iBuilt-in / URP / HDRPj
- *  Author : 0xE4F90A Œü‚¯Å¬ƒRƒA
- *************************************************************/
-
+ï»¿// Assets/Scripts/MirrorOrthographic.cs
 using UnityEngine;
-using System.Collections.Generic;
 
-[DisallowMultipleComponent]
-[RequireComponent(typeof(Renderer))]
-public sealed class Mirror : MonoBehaviour
+/// <summary>
+/// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+///  ğŸ“Œ Orthographic Mirror ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆï¼ˆBuilt-in RP ç”¨ï¼‰
+///      ãƒ»Quadï¼Plane ã©ã¡ã‚‰ã§ã‚‚ä½¿ãˆã‚‹ï¼ˆInspector ã§æ³•ç·šã‚’é¸æŠï¼‰
+///      ãƒ»é¡å°‚ç”¨ã‚«ãƒ¡ãƒ©ï¼‹RenderTexture ã‚’è‡ªå‹•ç”Ÿæˆã—ã€_MainTex ã«æµã—è¾¼ã‚€ã ã‘
+///      â€»Attach ã™ã‚‹ã ã‘ã§å‹•ãã¾ã™
+/// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/// </summary>
+[ExecuteAlways, RequireComponent(typeof(Renderer))]
+public sealed class MirrorOrthographic : MonoBehaviour
 {
-    [Header("‹¾‚ª•`‰æ‚·‚é‰ğ‘œ“x (³•ûŒ`)")]
-    [SerializeField] int textureSize = 1024;
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Inspector ã§èª¿æ•´ã§ãã‚‹é …ç›® â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    public enum NormalAxis { Forward, Up }               // è¡¨é¢æ³•ç·š
 
-    [Header("ƒ[ƒJƒ‹–@ü‚ğg‚¤ (’Êí‚Í forward)")]
-    [SerializeField] Vector3 localNormal = Vector3.forward;
+    [Header("åŸºæœ¬è¨­å®š")]
+    [SerializeField] int textureSize = 1024;  // RenderTexture è§£åƒåº¦
+    [SerializeField] LayerMask reflectionMask = ~0;    // æ˜ ã™ãƒ¬ã‚¤ãƒ¤
+    [SerializeField] float clipPlaneOffset = 0.03f; // ã‚¯ãƒªãƒƒãƒ—é¢å¾®ã‚ªãƒ•ã‚»ãƒƒãƒˆ
+    [SerializeField] NormalAxis normalAxis = NormalAxis.Forward; // Quad ç”¨
 
-    Camera mirrorCam;          // ¶¬‚µ‚½”½ËƒJƒƒ‰
-    RenderTexture rt;                // ‹¾—p RT
-    Renderer rend;               // ‘ÎÛ Renderer
-    List<Material> runtimeMats;      // •¡»‚µ‚½Àƒ}ƒeƒŠƒAƒ‹
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ å†…éƒ¨ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    Camera mirrorCam;
+    RenderTexture mirrorRT;
+    static readonly int MainTex = Shader.PropertyToID("_MainTex");
 
-    static readonly int MainTexId = Shader.PropertyToID("_MainTex");
-    static readonly int BaseMapId = Shader.PropertyToID("_BaseMap"); // URP/HDRP
-
-    /*========================= ‰Šú‰» =========================*/
-
-    void OnEnable()
-    {
-        rend = GetComponent<Renderer>();
-
-        // ‡@ RenderTexture ì¬
-        rt = new RenderTexture(textureSize, textureSize, 24, RenderTextureFormat.ARGB32)
-        {
-            name = $"MirrorRT_{name}",
-            antiAliasing = 1,
-            hideFlags = HideFlags.DontSave,
-            useMipMap = false
-        };
-
-        // ‡A ƒ}ƒeƒŠƒAƒ‹•¡» • RT ‚ğ·‚µ‘Ö‚¦
-        runtimeMats = new List<Material>(rend.sharedMaterials.Length);
-        for (int i = 0; i < rend.sharedMaterials.Length; ++i)
-        {
-            Material inst = Instantiate(rend.sharedMaterials[i]);
-            inst.name = rend.sharedMaterials[i].name + " (MirrorInst)";
-            ReplaceTextureSlot(inst, rt);
-            runtimeMats.Add(inst);
-        }
-        rend.materials = runtimeMats.ToArray();      // ƒCƒ“ƒXƒ^ƒ“ƒX”z—ñ‚ğ“K—p
-
-        // ‡B ”ñ•\¦ƒJƒƒ‰¶¬
-        GameObject camObj = new GameObject($"MirrorCam_{name}");
-        camObj.hideFlags = HideFlags.HideAndDontSave;
-        mirrorCam = camObj.AddComponent<Camera>();
-        mirrorCam.enabled = false;
-        mirrorCam.targetTexture = rt;
-    }
-
-    /*========================= Œãn–– =========================*/
-
-    void OnDisable()
-    {
-        if (mirrorCam) DestroyImmediate(mirrorCam.gameObject);
-        if (rt) DestroyImmediate(rt);
-        if (runtimeMats != null)
-            foreach (var m in runtimeMats) DestroyImmediate(m);
-    }
-
-    /*======================== –ˆƒtƒŒ[ƒ€ ========================*/
+    // =================================================================
+    // Unity æ¨™æº–ãƒ¡ã‚½ãƒƒãƒ‰
+    // =================================================================
+    void OnEnable() => Init();
+    void OnDisable() => Cleanup();
 
     void LateUpdate()
     {
-        Camera src = Camera.main;
-        if (!src || !mirrorCam) return;
+        if (!mirrorCam) return;
+        Camera main = Camera.main;
+        if (!main) return;
 
-        /*----- 1) ƒƒCƒ“ƒJƒƒ‰İ’èƒRƒs[ -----*/
-        mirrorCam.CopyFrom(src);
-        mirrorCam.targetTexture = rt;
+        // â”€â”€ ãƒ¡ã‚¤ãƒ³ã‚«ãƒ¡ãƒ©è¨­å®šã‚’ã‚³ãƒ”ãƒ¼ â”€â”€
+        mirrorCam.orthographic = true;
+        mirrorCam.orthographicSize = main.orthographicSize;
+        mirrorCam.aspect = main.aspect;
+        mirrorCam.cullingMask = reflectionMask;
+        mirrorCam.nearClipPlane = main.nearClipPlane;
+        mirrorCam.farClipPlane = main.farClipPlane;
 
-        /*----- 2) ‹¾–Ê•½–Ê‚ğƒ[ƒ‹ƒh‚Åæ“¾ -----*/
-        Vector3 pos = transform.position;
-        Vector3 normal = transform.TransformDirection(localNormal).normalized;
-        Plane plane = new Plane(normal, pos);
+        // â”€â”€ é¡é¢æ³•ç·š â”€â”€
+        Vector3 nWS =
+            normalAxis == NormalAxis.Forward ? transform.forward : transform.up;
+        nWS.Normalize();
+        float d = -Vector3.Dot(nWS, transform.position);           // å¹³é¢æ–¹ç¨‹å¼: nÂ·x + d = 0
 
-        /*----- 3) ”½Ëƒrƒ…[s—ñŒvZ -----*/
-        mirrorCam.worldToCameraMatrix = CalcReflectionMatrix(plane) * src.worldToCameraMatrix;
+        // â”€â”€ åå°„è¡Œåˆ—ï¼ˆworldâ†’reflected worldï¼‰â”€â”€
+        Matrix4x4 R = Matrix4x4.identity;
+        R.m00 = 1 - 2 * nWS.x * nWS.x; R.m01 = -2 * nWS.x * nWS.y; R.m02 = -2 * nWS.x * nWS.z; R.m03 = -2 * d * nWS.x;
+        R.m10 = -2 * nWS.y * nWS.x; R.m11 = 1 - 2 * nWS.y * nWS.y; R.m12 = -2 * nWS.y * nWS.z; R.m13 = -2 * d * nWS.y;
+        R.m20 = -2 * nWS.z * nWS.x; R.m21 = -2 * nWS.z * nWS.y; R.m22 = 1 - 2 * nWS.z * nWS.z; R.m23 = -2 * d * nWS.z;
 
-        /*----- 4) •½s“Š‰e‘Î‰ -----*/
-        if (src.orthographic)
-        {
-            mirrorCam.orthographic = true;
-            mirrorCam.orthographicSize = src.orthographicSize;
-        }
+        // â”€â”€ View/Projection è¡Œåˆ—ã‚’ç›´æ¥ã‚»ãƒƒãƒˆ â”€â”€
+        Matrix4x4 view = main.worldToCameraMatrix * R;
+        mirrorCam.worldToCameraMatrix = view;
 
-        /*----- 5) Oblique ƒNƒŠƒbƒsƒ“ƒO‚Å— –Êœ‹ -----*/
-        Vector4 clipPlane = new Vector4(normal.x, normal.y, normal.z,
-                                        -Vector3.Dot(normal, pos));
-        var proj = src.projectionMatrix;
-        mirrorCam.projectionMatrix =
-            proj * CalculateObliqueMatrix(proj, clipPlane);
+        // Transform ã‚’åŒæœŸï¼ˆGizmos/Frustum åˆ¤å®šç”¨ï¼‰
+        Matrix4x4 invView = view.inverse;
+        mirrorCam.transform.SetPositionAndRotation(invView.GetColumn(3), invView.rotation);
 
-        /*----- 6) ”½“]•`‰æ (Cull Front) -----*/
-        GL.invertCulling = true;
+        // â”€â”€ æ–œã‚ã‚¯ãƒªãƒƒãƒ—å¹³é¢ï¼ˆCamera ç©ºé–“ï¼‰â”€â”€
+        Vector4 planeWS = new Vector4(nWS.x, nWS.y, nWS.z,
+                                      -Vector3.Dot(nWS, transform.position) - clipPlaneOffset);
+        Vector4 planeCS = mirrorCam.worldToCameraMatrix * planeWS;
+
+        Matrix4x4 proj = main.projectionMatrix;
+        MakeProjectionOblique(ref proj, planeCS);
+        mirrorCam.projectionMatrix = proj;
+
+        // â”€â”€ æç”» â”€â”€
+        GL.invertCulling = true;   // åå°„ã§è£è¡¨ãŒé€†ã«ãªã‚‹ãŸã‚
         mirrorCam.Render();
         GL.invertCulling = false;
     }
 
-    /*====================== ƒ†[ƒeƒBƒŠƒeƒB ======================*/
-
-    // ”½Ës—ñ
-    static Matrix4x4 CalcReflectionMatrix(Plane p)
+    // =================================================================
+    // åˆæœŸåŒ–
+    // =================================================================
+    void Init()
     {
-        Vector3 n = p.normal;
-        float d = -p.distance;
-        float nx = -2f * n.x, ny = -2f * n.y, nz = -2f * n.z;
+        if (mirrorCam) return;
 
-        return new Matrix4x4
+        // â”€â”€ RenderTexture â”€â”€
+        mirrorRT = new RenderTexture(textureSize, textureSize, 16, RenderTextureFormat.ARGB32)
         {
-            m00 = 1f + nx * n.x,
-            m01 = nx * n.y,
-            m02 = nx * n.z,
-            m03 = nx * d,
-            m10 = ny * n.x,
-            m11 = 1f + ny * n.y,
-            m12 = ny * n.z,
-            m13 = ny * d,
-            m20 = nz * n.x,
-            m21 = nz * n.y,
-            m22 = 1f + nz * n.z,
-            m23 = nz * d,
-            m30 = 0,
-            m31 = 0,
-            m32 = 0,
-            m33 = 1
+            name = $"RT_{name}_Mirror",
+            hideFlags = HideFlags.HideAndDontSave
         };
+
+        // â”€â”€ ãƒãƒ†ãƒªã‚¢ãƒ«ç¢ºä¿ â”€â”€
+        Renderer rend = GetComponent<Renderer>();
+        Material mat = rend.sharedMaterial;
+
+        if (mat == null || mat.shader.name != "Unlit/MirrorOrtho")
+        {
+            Shader sh = Shader.Find("Unlit/MirrorOrtho");
+            if (!sh)
+            {
+                Debug.LogError("âŒ Shader \"Unlit/MirrorOrtho\" not found.");
+                enabled = false;
+                return;
+            }
+            mat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+            rend.sharedMaterial = mat;
+        }
+
+        // â˜… ã“ã“ã§ RT ã¨ Tiling ã‚’è¨­å®šï¼ˆmat ãŒå¿…ãšå­˜åœ¨ã—ã¦ã„ã‚‹çŠ¶æ…‹ï¼‰
+        mat.SetTexture(MainTex, mirrorRT);
+
+        mat.mainTextureScale =
+            (normalAxis == NormalAxis.Up) ? new Vector2(0.1f, 0.1f)   // Plane
+                                          : Vector2.one;              // Quad
+
+        // â”€â”€ é¡ã‚«ãƒ¡ãƒ©ç”Ÿæˆ â”€â”€
+        GameObject go = new GameObject("MirrorCam")
+        {
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        go.transform.parent = transform;
+        mirrorCam = go.AddComponent<Camera>();
+        mirrorCam.enabled = false;
+        mirrorCam.targetTexture = mirrorRT;
     }
 
-    // Oblique Clip
-    static Matrix4x4 CalculateObliqueMatrix(Matrix4x4 proj, Vector4 plane)
+
+    // =================================================================
+    // ç ´æ£„
+    // =================================================================
+    void Cleanup()
     {
-        Vector4 q = new Vector4(
-            (Mathf.Sign(plane.x) + proj.m02) / proj.m00,
-            (Mathf.Sign(plane.y) + proj.m12) / proj.m11,
-            -1f,
-            (1f + proj.m22) / proj.m23
-        );
-        Vector4 c = plane * (2f / Vector4.Dot(plane, q));
-
-        proj.m20 = c.x;
-        proj.m21 = c.y;
-        proj.m22 = c.z + 1f;
-        proj.m23 = c.w;
-        return proj;
+        if (mirrorRT)
+        {
+            if (Application.isPlaying) Destroy(mirrorRT);
+            else DestroyImmediate(mirrorRT);
+        }
+        if (mirrorCam)
+        {
+            if (Application.isPlaying) Destroy(mirrorCam.gameObject);
+            else DestroyImmediate(mirrorCam.gameObject);
+        }
+        mirrorRT = null;
+        mirrorCam = null;
     }
 
-    // ƒ}ƒeƒŠƒAƒ‹‚ÌƒeƒNƒXƒ`ƒƒƒXƒƒbƒg‚ğ RT ‚É·‚µ‘Ö‚¦
-    static void ReplaceTextureSlot(Material m, RenderTexture rt)
+    // =================================================================
+    // æ–œã‚ã‚¯ãƒªãƒƒãƒ—å¹³é¢åˆæˆ
+    // =================================================================
+    static void MakeProjectionOblique(ref Matrix4x4 proj, Vector4 planeCS)
     {
-        if (m.HasProperty(MainTexId))
-            m.SetTexture(MainTexId, rt);
-        if (m.HasProperty(BaseMapId))
-            m.SetTexture(BaseMapId, rt);
+        Vector4 q = proj.inverse * new Vector4(
+            Sign(planeCS.x), Sign(planeCS.y), 1.0f, 1.0f);
+
+        Vector4 c = planeCS * (2.0f / Vector4.Dot(planeCS, q));
+
+        proj[2] = c.x - proj[3];
+        proj[6] = c.y - proj[7];
+        proj[10] = c.z - proj[11];
+        proj[14] = c.w - proj[15];
     }
+    static float Sign(float v) => v < 0 ? -1f : 1f;
 }
