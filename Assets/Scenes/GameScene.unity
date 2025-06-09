@@ -1209,9 +1209,9 @@ MonoBehaviour:
   textureSize: 1024
   reflectionMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 23
   clipPlaneOffset: 0.03
-  normalAxis: 1
+  normalAxis: 0
 --- !u!64 &501979273
 MeshCollider:
   m_ObjectHideFlags: 0
