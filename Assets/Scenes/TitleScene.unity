@@ -623,10 +623,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -692,6 +692,7 @@ GameObject:
   - component: {fileID: 755386715}
   - component: {fileID: 755386717}
   - component: {fileID: 755386716}
+  - component: {fileID: 755386718}
   m_Layer: 5
   m_Name: PressAnyButton
   m_TagString: Untagged
@@ -753,6 +754,25 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 755386714}
   m_CullTransparentMesh: 1
+--- !u!114 &755386718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 755386714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b11e9dacb1fa794aa9846adf804400e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_TargetImage: {fileID: 755386716}
+  m_FadeSpeed: 1
+  m_MinAlpha: 0
+  m_MaxAlpha: 1
+  m_SceneName: SelectScene
+  m_LoadOnAnyKey: 1
+  m_TriggerKey: 13
 --- !u!1 &826958184
 GameObject:
   m_ObjectHideFlags: 0
