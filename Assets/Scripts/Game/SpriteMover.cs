@@ -21,14 +21,35 @@ public sealed class SpriteMover : MonoBehaviour
     [SerializeField, Tooltip("XZ移動時にYを固定")]
     private bool m_FreezeYPosition = true;
 
-    private enum Dir
+    // === LOCK: 追加（移動系停止制御） ==========================
+    [Header("=== 移動ロック ===")]
+    [SerializeField, Tooltip("true にすると移動系（入力/物理）を完全停止")]
+    private bool m_MovementLocked = false;
+
+    [SerializeField, Tooltip("ロック時に表示（子オブジェクト）も全て非表示にする")]
+    private bool m_HideVisualWhenLocked = true;
+
+    [SerializeField, Tooltip("ロック時、Rigidbody の位置を全軸フリーズする（解除で元に戻す）")]
+    private bool m_FreezeAllPositionOnLock = true;
+
+    /// <summary>外部から移動ロックを有効化</summary>
+    public void LockMovement(bool hideVisual = true)
     {
-        None,
-        Right,
-        Left,
-        Up,
-        Down
+        m_MovementLocked = true;
+        m_HideVisualWhenLocked = hideVisual;
+        ApplyLockStateImmediate();
     }
+
+    /// <summary>外部から移動ロックを解除</summary>
+    public void UnlockMovement()
+    {
+        m_MovementLocked = false;
+        RestoreConstraints();
+        // 表示は元のスクリプトのロジックに任せる（何も表示しない場合は必要に応じて ShowOnly など呼ぶ）
+    }
+    // ==========================================================
+
+    private enum Dir { None, Right, Left, Up, Down }
 
     private Vector3 m_InitScale1 = Vector3.one;
     private Vector3 m_InitScale2 = Vector3.one;
@@ -40,6 +61,10 @@ public sealed class SpriteMover : MonoBehaviour
     // 物理移動用
     private Rigidbody m_Rigidbody;
     private Vector3 m_MoveDir3D = Vector3.zero; // Updateで入力を読み、FixedUpdateで使用
+
+    // === LOCK: 追加（元の拘束値の保持） =========================
+    private RigidbodyConstraints m_OriginalConstraints;
+    // ===========================================================
 
     private void Awake()
     {
@@ -67,10 +92,31 @@ public sealed class SpriteMover : MonoBehaviour
         {
             m_Rigidbody.constraints |= RigidbodyConstraints.FreezePositionY;
         }
+
+        // === LOCK: 追加（元拘束保存 & 起動時ロック反映） ===
+        m_OriginalConstraints = m_Rigidbody.constraints;
+        if (m_MovementLocked)
+        {
+            ApplyLockStateImmediate();
+        }
     }
 
     private void Update()
     {
+        // === LOCK: 先頭で監視 ===
+        if (m_MovementLocked)
+        {
+            // 入力を読まない＆移動方向ゼロ
+            m_MoveDir3D = Vector3.zero;
+            m_LastPressed = Dir.None;
+
+            if (m_HideVisualWhenLocked)
+            {
+                HideAllChildren();
+            }
+            return; // 以降の入力/表示処理はスキップ
+        }
+
         // --- 離した瞬間の表示 ---
         if (GetKeyUpRight())
         {
@@ -114,6 +160,18 @@ public sealed class SpriteMover : MonoBehaviour
             return;
         }
 
+        // === LOCK: 物理側も完全停止 ===
+        if (m_MovementLocked)
+        {
+#if UNITY_6000_0_OR_NEWER
+            m_Rigidbody.linearVelocity = Vector3.zero;
+#else
+    m_Rigidbody.velocity = Vector3.zero;
+#endif
+            m_Rigidbody.angularVelocity = Vector3.zero;
+            return;
+        }
+
         // 等速移動（物理）
         if (m_MoveDir3D.sqrMagnitude > 0f)
         {
@@ -152,73 +210,25 @@ public sealed class SpriteMover : MonoBehaviour
 
     // ===== 入力ヘルパ =====
 
-    private static bool GetKeyRight()
-    {
-        return Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D);
-    }
-    private static bool GetKeyLeft()
-    {
-        return Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A);
-    }
-    private static bool GetKeyUp()
-    {
-        return Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W);
-    }
-    private static bool GetKeyDown()
-    {
-        return Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S);
-    }
+    private static bool GetKeyRight() { return Input.GetKey(KeyCode.D); }
+    private static bool GetKeyLeft() { return Input.GetKey(KeyCode.A); }
+    private static bool GetKeyUp() { return Input.GetKey(KeyCode.W); }
+    private static bool GetKeyDown() { return Input.GetKey(KeyCode.S); }
 
-    private static bool GetKeyDownRight()
-    {
-        return Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D);
-    }
-    private static bool GetKeyDownLeft()
-    {
-        return Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A);
-    }
-    private static bool GetKeyDownUp()
-    {
-        return Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W);
-    }
-    private static bool GetKeyDownDown()
-    {
-        return Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S);
-    }
+    private static bool GetKeyDownRight() { return Input.GetKeyDown(KeyCode.D); }
+    private static bool GetKeyDownLeft() { return Input.GetKeyDown(KeyCode.A); }
+    private static bool GetKeyDownUp() { return Input.GetKeyDown(KeyCode.W); }
+    private static bool GetKeyDownDown() { return Input.GetKeyDown(KeyCode.S); }
 
-    private static bool GetKeyUpRight()
-    {
-        return Input.GetKeyUp(KeyCode.RightArrow) || Input.GetKeyUp(KeyCode.D);
-    }
-    private static bool GetKeyUpLeft()
-    {
-        return Input.GetKeyUp(KeyCode.LeftArrow) || Input.GetKeyUp(KeyCode.A);
-    }
-    private static bool GetKeyUpUp()
-    {
-        return Input.GetKeyUp(KeyCode.UpArrow) || Input.GetKeyUp(KeyCode.W);
-    }
-    private static bool GetKeyUpDown()
-    {
-        return Input.GetKeyUp(KeyCode.DownArrow) || Input.GetKeyUp(KeyCode.S);
-    }
+    private static bool GetKeyUpRight() { return Input.GetKeyUp(KeyCode.D); }
+    private static bool GetKeyUpLeft() { return Input.GetKeyUp(KeyCode.A); }
+    private static bool GetKeyUpUp() { return Input.GetKeyUp(KeyCode.W); }
+    private static bool GetKeyUpDown() { return Input.GetKeyUp(KeyCode.S); }
 
-    private static bool IsHeldRight()
-    {
-        return GetKeyRight();
-    }
-    private static bool IsHeldLeft()
-    {
-        return GetKeyLeft();
-    }
-    private static bool IsHeldUp()
-    {
-        return GetKeyUp();
-    }
-    private static bool IsHeldDown()
-    {
-        return GetKeyDown();
-    }
+    private static bool IsHeldRight() { return GetKeyRight(); }
+    private static bool IsHeldLeft() { return GetKeyLeft(); }
+    private static bool IsHeldUp() { return GetKeyUp(); }
+    private static bool IsHeldDown() { return GetKeyDown(); }
 
     private static bool IsAnyHeld()
     {
@@ -294,26 +304,71 @@ public sealed class SpriteMover : MonoBehaviour
 
         if (target == null)
         {
-            return;
+            return; // 全て非表示
         }
 
-        if (target == m_Child1)
-            ApplyFlip(m_Child1.transform, m_InitScale1, flipX);
-        else if (target == m_Child2)
-            ApplyFlip(m_Child2.transform, m_InitScale2, flipX);
-        else if (target == m_Child3)
-            ApplyFlip(m_Child3.transform, m_InitScale3, flipX);
-        else if (target == m_Child4)
-            ApplyFlip(m_Child4.transform, m_InitScale4, flipX);
+        if (target == m_Child1) ApplyFlip(m_Child1.transform, m_InitScale1, flipX);
+        else if (target == m_Child2) ApplyFlip(m_Child2.transform, m_InitScale2, flipX);
+        else if (target == m_Child3) ApplyFlip(m_Child3.transform, m_InitScale3, flipX);
+        else if (target == m_Child4) ApplyFlip(m_Child4.transform, m_InitScale4, flipX);
     }
 
     private static void ApplyFlip(Transform tr, Vector3 initScale, bool flipX)
     {
-        if (tr == null)
-        {
-            return;
-        }
+        if (tr == null) return;
         float x = Mathf.Abs(initScale.x) * (flipX ? -1f : 1f);
         tr.localScale = new Vector3(x, initScale.y, initScale.z);
     }
+
+    // === LOCK: 便利関数 ================================
+    private void HideAllChildren()
+    {
+        if (m_Child1 != null) m_Child1.SetActive(false);
+        if (m_Child2 != null) m_Child2.SetActive(false);
+        if (m_Child3 != null) m_Child3.SetActive(false);
+        if (m_Child4 != null) m_Child4.SetActive(false);
+    }
+
+    private void ApplyLockStateImmediate()
+    {
+        // 入力/表示抑止
+        m_MoveDir3D = Vector3.zero;
+        m_LastPressed = Dir.None;
+
+        if (m_HideVisualWhenLocked)
+        {
+            HideAllChildren();
+        }
+
+        // 物理停止
+        if (m_Rigidbody != null)
+        {
+#if UNITY_6000_0_OR_NEWER
+            m_Rigidbody.linearVelocity = Vector3.zero;
+#else
+    m_Rigidbody.velocity = Vector3.zero;
+#endif
+            m_Rigidbody.angularVelocity = Vector3.zero;
+
+            if (m_FreezeAllPositionOnLock)
+            {
+                // 位置XYZ + 回転をフリーズ
+                m_OriginalConstraints = m_Rigidbody.constraints; // 念のため最新を保存
+                m_Rigidbody.constraints =
+                    RigidbodyConstraints.FreezePositionX |
+                    RigidbodyConstraints.FreezePositionY |
+                    RigidbodyConstraints.FreezePositionZ |
+                    RigidbodyConstraints.FreezeRotation;
+            }
+        }
+    }
+
+    private void RestoreConstraints()
+    {
+        if (m_Rigidbody != null)
+        {
+            m_Rigidbody.constraints = m_OriginalConstraints;
+        }
+    }
+    // ====================================================
 }
