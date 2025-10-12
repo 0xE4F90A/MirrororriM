@@ -12,7 +12,16 @@ EditorBuildSettings:
     path: Assets/Scenes/SelectScene.unity
     guid: 83b0169edb308dc4daf6a70ecedc2542
   - enabled: 1
-    path: Assets/Scenes/GameScene.unity
+    path: Assets/Scenes/Stage1SelectScene.unity
+    guid: f1215274975b4474d9e25778bfcee967
+  - enabled: 1
+    path: Assets/Scenes/Stage2SelectScene.unity
+    guid: 15f02e62d56c4904ebc530fcb9be20e6
+  - enabled: 1
+    path: Assets/Scenes/Stage3SelectScene.unity
+    guid: 134d51d44d357594e8942020e1c7f1fa
+  - enabled: 1
+    path: Assets/Scenes/StageScene/Stage1.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

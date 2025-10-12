@@ -1,6 +1,7 @@
 ﻿#if UNITY_EDITOR
 using UnityEditor;   // 忘れずに
 #endif
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -30,6 +31,13 @@ public sealed class ToggleExit : MonoBehaviour
     [SerializeField] private KeyCode resetKey = KeyCode.Escape;
     [SerializeField] private KeyCode exitKey = KeyCode.Return;
 
+    [Header("SE 再生設定")]
+    [SerializeField] private AudioSource seSource;      // UI用AudioSource（未指定なら自動追加）
+    [SerializeField] private AudioClip selectSE;        // SE1：選択移動
+    [SerializeField] private AudioClip decideSE;        // SE2：決定
+    [Tooltip("決定SEを鳴らし終えてから終了するか")]
+    [SerializeField] private bool waitDecideSEBeforeQuit = true;
+
     /*========== 内部 ==========*/
     private enum Visible { None, Yes, No }
     private Visible current = Visible.No;   // 起動時 NO 表示
@@ -49,34 +57,87 @@ public sealed class ToggleExit : MonoBehaviour
         if (!noGroup) noGroup = transform.Find("NO")?.GetComponent<CanvasGroup>();
 
         SetGroupVisible(Visible.No);        // 初期 NO 表示
+
+        // SE用AudioSourceの用意（未割り当てなら自動追加）
+        if (!seSource)
+        {
+            seSource = GetComponent<AudioSource>();
+            if (!seSource)
+            {
+                seSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+        seSource.playOnAwake = false;
+        seSource.spatialBlend = 0f; // 2D再生
     }
 
     private void Update()
     {
         // 指定キーを押したら表示状態を反転
         if (Input.GetKeyDown(toggleKey))
+        {
             SetVisible(!visible);
+        }
 
+        // ExitMenuが非表示なら、ここで終わり（SEも鳴らさない）
+        if (!visible)
+        {
+            return;
+        }
+
+        // 表示中のみ選択操作を受け付け
         if (visible && Input.GetKeyDown(yesKey))
         {
-            SetGroupVisible(Visible.Yes);
-            isExit = true;
+            // すでに YES なら音を鳴らさない／変更もしない
+            if (current != Visible.Yes)
+            {
+                SetGroupVisible(Visible.Yes);
+                isExit = true;
+                PlaySE(selectSE); // SE1
+            }
         }
-        else if (Input.GetKeyDown(noKey))
+        else if (visible && Input.GetKeyDown(noKey))
         {
-            SetGroupVisible(Visible.No);
-            isExit = false;
+            // すでに NO なら音を鳴らさない／変更もしない
+            if (current != Visible.No)
+            {
+                SetGroupVisible(Visible.No);
+                isExit = false;
+                PlaySE(selectSE); // SE1
+            }
         }
-        else if (Input.GetKeyDown(resetKey))
+        else if (visible && Input.GetKeyDown(resetKey))
         {
-            SetGroupVisible(Visible.No);
+            // リセットは既定で音なし（必要なら PlaySE(selectSE) を追加）
+            if (current != Visible.No)
+            {
+                SetGroupVisible(Visible.No);
+            }
             isExit = false;
         }
 
+        // 決定
         if (Input.GetKeyDown(exitKey))
         {
-            if (isExit) QuitGame();
-            else SetVisible(false);
+            if (isExit)
+            {
+                // 決定：SE2 → 終了
+                if (waitDecideSEBeforeQuit && decideSE)
+                {
+                    StartCoroutine(PlayDecideThenQuit());
+                }
+                else
+                {
+                    PlaySE(decideSE);
+                    QuitGame();
+                }
+            }
+            else
+            {
+                // NO選択でEnter：SE2を鳴らして閉じる
+                PlaySE(decideSE);
+                SetVisible(false);
+            }
         }
     }
 
@@ -85,7 +146,6 @@ public sealed class ToggleExit : MonoBehaviour
     /// <summary>
     /// CanvasGroup の表示／非表示を一括で設定
     /// </summary>
-    /// <param name="enable">true: 表示 / false: 非表示</param>
     private void SetVisible(bool enable)
     {
         visible = enable;
@@ -114,6 +174,25 @@ public sealed class ToggleExit : MonoBehaviour
         cg.blocksRaycasts = enable;
     }
 
+    private void PlaySE(AudioClip clip)
+    {
+        if (!clip || !seSource) return;
+        seSource.PlayOneShot(clip);
+    }
+
+    private IEnumerator PlayDecideThenQuit()
+    {
+        PlaySE(decideSE);
+        float dur = decideSE ? decideSE.length / Mathf.Max(0.0001f, seSource.pitch) : 0f;
+        yield return new WaitForSecondsRealtime(dur);
+        QuitGame();
+    }
+
+    public bool GetVisible()
+    {
+        return visible;
+    }
+
     private void QuitGame()
     {
 #if UNITY_EDITOR
@@ -124,4 +203,3 @@ public sealed class ToggleExit : MonoBehaviour
 #endif
     }
 }
-
