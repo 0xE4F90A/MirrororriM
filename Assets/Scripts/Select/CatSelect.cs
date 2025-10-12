@@ -69,21 +69,16 @@ public sealed class CatSelect : MonoBehaviour
     {
         // --- 離した瞬間の表示 ---
         if (GetKeyUpRight())
-        {
             ShowReleaseHorizontal(isLeft: false); // 右を離した → 3番のみ
-        }
+        
         if (GetKeyUpLeft())
-        {
             ShowReleaseVertical(isDown: false);   // 左を離した → 4番のみ
-        }
+        
         if (GetKeyUpUp())
-        {
             ShowReleaseHorizontal(isLeft: true);  // 上を離した → 3番（反転）
-        }
+        
         if (GetKeyUpDown())
-        {
             ShowReleaseVertical(isDown: true);    // 下を離した → 4番（反転）
-        }
 
         // --- 押下開始の記録 ---
         if (GetKeyDownRight()) { m_LastPressed = Dir.Right; }
@@ -106,10 +101,8 @@ public sealed class CatSelect : MonoBehaviour
     private void FixedUpdate()
     {
         if (m_Rigidbody == null)
-        {
             return;
-        }
-
+        
         // 等速移動（物理）
         if (m_MoveDir3D.sqrMagnitude > 0f)
         {
@@ -134,9 +127,7 @@ public sealed class CatSelect : MonoBehaviour
         if (Input.GetKey(KeyCode.DownArrow)) y -= 1;
 
         if (x == 0 && y == 0)
-        {
             return Vector3.zero;
-        }
 
         if (m_MoveInXZPlane)
         {
@@ -294,9 +285,7 @@ public sealed class CatSelect : MonoBehaviour
         if (m_Child4 != null) m_Child4.SetActive(target == m_Child4);
 
         if (target == null)
-        {
             return;
-        }
 
         if (target == m_Child1)
             ApplyFlip(m_Child1.transform, m_InitScale1, flipX);
@@ -311,9 +300,8 @@ public sealed class CatSelect : MonoBehaviour
     private static void ApplyFlip(Transform tr, Vector3 initScale, bool flipX)
     {
         if (tr == null)
-        {
             return;
-        }
+        
         float x = Mathf.Abs(initScale.x) * (flipX ? -1f : 1f);
         tr.localScale = new Vector3(x, initScale.y, initScale.z);
     }
