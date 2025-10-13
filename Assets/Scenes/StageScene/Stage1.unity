@@ -692,6 +692,23 @@ MonoBehaviour:
   m_SceneName: Stage2
   m_RequireInRangeToTransition: 1
   m_AutoHideOnExit: 1
+  m_LockMoverOnEnter: 1
+  m_LockHideVisual: 1
+  m_PauseTimeOnEnter: 0
+  m_UnpauseOnTransition: 1
+  m_UnpauseOnDisableOrDestroy: 1
+  OnGoalEnter:
+    m_PersistentCalls:
+      m_Calls: []
+  OnGoalExit:
+    m_PersistentCalls:
+      m_Calls: []
+  OnBeforeLoad:
+    m_PersistentCalls:
+      m_Calls: []
+  OnAfterEnterUI:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &72370701
 GameObject:
   m_ObjectHideFlags: 0
@@ -1908,7 +1925,7 @@ AudioSource:
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
-  m_Volume: 0.6
+  m_Volume: 0.8
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -2001,7 +2018,7 @@ Transform:
   m_GameObject: {fileID: 778050090}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 11.571585, y: 960.9639, z: 49.61417}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3151,7 +3168,7 @@ Transform:
   m_GameObject: {fileID: 1375086552}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10.953455, y: -2.680141, z: 5.767463}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

@@ -123,10 +123,10 @@ public sealed class ObjectClampMover : MonoBehaviour
     // インスペクター：移動・クランプ
     //========================
     [Header("=== ワープ（ワールド座標・GetKeyDownのみ） ===")]
-    [SerializeField] private MoveKey m_MoveRight = new MoveKey { Key = KeyCode.RightArrow, WorldDirection = new Vector3(1f, 0f, 0f), Step = 40f };
-    [SerializeField] private MoveKey m_MoveLeft = new MoveKey { Key = KeyCode.LeftArrow, WorldDirection = new Vector3(-1f, 0f, 0f), Step = 40f };
-    [SerializeField] private MoveKey m_MoveUp = new MoveKey { Key = KeyCode.UpArrow, WorldDirection = new Vector3(0f, 0f, 1f), Step = 40f };
-    [SerializeField] private MoveKey m_MoveDown = new MoveKey { Key = KeyCode.DownArrow, WorldDirection = new Vector3(0f, 0f, -1f), Step = 40f };
+    [SerializeField] private MoveKey m_MoveRight = new MoveKey { Key = KeyCode.RightArrow, WorldDirection = new Vector3(1f, 0f, 0f), Step = 1.25f };
+    [SerializeField] private MoveKey m_MoveLeft = new MoveKey { Key = KeyCode.LeftArrow, WorldDirection = new Vector3(-1f, 0f, 0f), Step = 1.25f };
+    [SerializeField] private MoveKey m_MoveUp = new MoveKey { Key = KeyCode.UpArrow, WorldDirection = new Vector3(0f, 0f, 1f), Step = 1.25f };
+    [SerializeField] private MoveKey m_MoveDown = new MoveKey { Key = KeyCode.DownArrow, WorldDirection = new Vector3(0f, 0f, -1f), Step = 1.25f };
 
     [Header("移動SE（SE1）")]
     [SerializeField, Tooltip("移動時に再生するSE")] private AudioClip m_SeMove;
@@ -268,10 +268,10 @@ public sealed class ObjectClampMover : MonoBehaviour
     //========================
     private bool AnyControlKeyDown()
     {
-        if (Input.GetKeyDown(m_MoveRight.Key)) return true;
-        if (Input.GetKeyDown(m_MoveLeft.Key)) return true;
-        if (Input.GetKeyDown(m_MoveUp.Key)) return true;
-        if (Input.GetKeyDown(m_MoveDown.Key)) return true;
+        if (Input.GetKeyDown(m_MoveRight.Key) || PadBool.IsRightStickRight()) return true;
+        if (Input.GetKeyDown(m_MoveLeft.Key) || PadBool.IsRightStickLeft()) return true;
+        if (Input.GetKeyDown(m_MoveUp.Key) || PadBool.IsRightStickUp()) return true;
+        if (Input.GetKeyDown(m_MoveDown.Key) || PadBool.IsRightStickDown()) return true;
 
         if (m_RotationGroups != null)
         {

@@ -879,7 +879,7 @@ MonoBehaviour:
   m_FadeSpeed: 1
   m_MinAlpha: 0
   m_MaxAlpha: 1
-  m_SceneName: SelectScene
+  m_SceneName: StageSelectScene
   m_LoadOnAnyKey: 0
   m_TriggerKey: 13
   m_ToggleExit: {fileID: 583216632}
