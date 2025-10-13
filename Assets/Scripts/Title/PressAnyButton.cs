@@ -69,7 +69,7 @@ public sealed class PressAnyButton : MonoBehaviour
         if (Time.unscaledTime < m_InputResumeTime)
             return;
 
-        bool triggered = m_LoadOnAnyKey ? Input.anyKeyDown : Input.GetKeyDown(m_TriggerKey);
+        bool triggered = m_LoadOnAnyKey ? Input.anyKeyDown || PadBool.AnyDown() : Input.GetKeyDown(m_TriggerKey) || PadBool.IsADown();
         if (triggered && !string.IsNullOrEmpty(m_SceneName))
         {
             SceneManager.LoadScene(m_SceneName);

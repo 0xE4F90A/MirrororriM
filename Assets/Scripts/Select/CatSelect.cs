@@ -118,13 +118,13 @@ public sealed class CatSelect : MonoBehaviour
     {
         // 横移動は従来どおり：RightArrow / LeftArrow / D / A
         int x = 0;
-        if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D)) x += 1;
-        if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A)) x -= 1;
+        if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || PadBool.IsLeftStickRight()) x += 1;
+        if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || PadBool.IsLeftStickLeft()) x -= 1;
 
         // 縦移動は Up/Down Arrow のみを参照（W/S は無視して移動させない）
         int y = 0;
-        if (Input.GetKey(KeyCode.UpArrow)) y += 1;
-        if (Input.GetKey(KeyCode.DownArrow)) y -= 1;
+        //if (Input.GetKey(KeyCode.UpArrow) || PadBool.IsLeftStickUp()) y += 1;
+        //if (Input.GetKey(KeyCode.DownArrow) || PadBool.IsLeftStickDown()) y -= 1;
 
         if (x == 0 && y == 0)
             return Vector3.zero;

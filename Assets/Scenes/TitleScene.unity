@@ -880,7 +880,7 @@ MonoBehaviour:
   m_MinAlpha: 0
   m_MaxAlpha: 1
   m_SceneName: SelectScene
-  m_LoadOnAnyKey: 1
+  m_LoadOnAnyKey: 0
   m_TriggerKey: 13
   m_ToggleExit: {fileID: 583216632}
   m_IgnoreSecondsAfterMenuClose: 0.15

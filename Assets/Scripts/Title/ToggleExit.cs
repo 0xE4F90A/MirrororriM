@@ -74,7 +74,7 @@ public sealed class ToggleExit : MonoBehaviour
     private void Update()
     {
         // 指定キーを押したら表示状態を反転
-        if (Input.GetKeyDown(toggleKey))
+        if (Input.GetKeyDown(toggleKey) || PadBool.IsStartDown())
         {
             SetVisible(!visible);
         }
@@ -86,7 +86,7 @@ public sealed class ToggleExit : MonoBehaviour
         }
 
         // 表示中のみ選択操作を受け付け
-        if (visible && Input.GetKeyDown(yesKey))
+        if (visible && Input.GetKeyDown(yesKey) || PadBool.IsLeftStickLeft())
         {
             // すでに YES なら音を鳴らさない／変更もしない
             if (current != Visible.Yes)
@@ -96,7 +96,7 @@ public sealed class ToggleExit : MonoBehaviour
                 PlaySE(selectSE); // SE1
             }
         }
-        else if (visible && Input.GetKeyDown(noKey))
+        else if (visible && Input.GetKeyDown(noKey) || PadBool.IsLeftStickRight())
         {
             // すでに NO なら音を鳴らさない／変更もしない
             if (current != Visible.No)
@@ -106,7 +106,7 @@ public sealed class ToggleExit : MonoBehaviour
                 PlaySE(selectSE); // SE1
             }
         }
-        else if (visible && Input.GetKeyDown(resetKey))
+        else if (visible && Input.GetKeyDown(resetKey) || PadBool.IsStartDown())
         {
             // リセットは既定で音なし（必要なら PlaySE(selectSE) を追加）
             if (current != Visible.No)
@@ -117,7 +117,7 @@ public sealed class ToggleExit : MonoBehaviour
         }
 
         // 決定
-        if (Input.GetKeyDown(exitKey))
+        if (Input.GetKeyDown(exitKey) || PadBool.IsADown())
         {
             if (isExit)
             {
