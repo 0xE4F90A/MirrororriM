@@ -166,4 +166,8 @@ public static class PadBool
             g.dpad.left.wasReleasedThisFrame || g.dpad.right.wasReleasedThisFrame ||
             g.leftTrigger.wasReleasedThisFrame || g.rightTrigger.wasReleasedThisFrame;
     }
+
+
+
+    
 }

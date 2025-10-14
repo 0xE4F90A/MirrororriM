@@ -43,7 +43,7 @@ public sealed class ObjectClampMover : MonoBehaviour
     [Serializable]
     public struct AngleGoalRange
     {
-        [Tooltip("この軸の“完了角度範囲”判定を有効化")]
+        [Tooltip("この軸の“完了角度範囲”判定を有効化（※ローカル角で判定）")]
         public bool Enabled;
 
         [Tooltip("角度下限（度）。-可。0..360を想定（wrap対応）")]
@@ -66,58 +66,36 @@ public sealed class ObjectClampMover : MonoBehaviour
         public float Step;
     }
 
+    //=== 2系統に固定した回転設定（ローカル回転） ============================
     [Serializable]
-    public sealed class RotationEntry
+    public sealed class FixedRotation
     {
-        [Header("対象")]
-        [Tooltip("回転させる Transform（未指定なら自身）")]
-        public Transform Target;
+        [Header("入力")]
+        [Tooltip("このキーを押したら回転します（GetKeyDown）")]
+        public KeyCode Key = KeyCode.None;
 
-        [Tooltip("回転させるワールド軸（X/Y/Z）")]
+        [Header("回転設定（ローカル）")]
+        [Tooltip("ローカルのどの軸を回転させるか")]
         public Axis Axis = Axis.Y;
 
-        [Header("角度列（ピンポン）")]
-        [Tooltip("例：0,-45,-90 → 0→-45→-90→-45→0…／0,90 → 0→90→0→90…")]
+        [Tooltip("角度パターン（度）。例：0,45,90 → ピンポン 0→45→90→45→0…")]
         public float[] Angles = new float[] { 0f, 90f };
 
-        [Tooltip("開始時に最初の角度を適用")]
-        public bool ApplyFirstAngleOnStart = false;
+        [Header("サウンド")]
+        [Tooltip("押下時に再生するSE")]
+        public AudioClip Se;
 
-        // ランタイム
+        // ランタイム（ピンポン用）
         [NonSerialized] public int _index = 0;
-        [NonSerialized] public int _direction = 1;
+        [NonSerialized] public int _direction = +1;
 
         public void ResetRuntime()
         {
             _index = 0;
-            _direction = 1;
+            _direction = +1;
         }
     }
-
-    [Serializable]
-    public sealed class RotationGroup
-    {
-        [Header("入力（このキーで本グループの全エントリを同時切替）")]
-        [Tooltip("押下ごとに全エントリの角度を1ステップ進める（ピンポン）")]
-        public KeyCode Key = KeyCode.None;
-
-        [Header("サウンド")]
-        [Tooltip("押下ごとに再生するSE（例：SE2やSE3）")]
-        public AudioClip Se;
-
-        [Header("回転エントリ（複数可）")]
-        [Tooltip("同じキーで複数軸・複数対象を同時に切り替え可能")]
-        public RotationEntry[] Entries;
-
-        public void ResetRuntimeAll()
-        {
-            if (Entries == null) return;
-            for (int i = 0; i < Entries.Length; ++i)
-            {
-                if (Entries[i] != null) Entries[i].ResetRuntime();
-            }
-        }
-    }
+    //=======================================================================
 
     //========================
     // インスペクター：移動・クランプ
@@ -138,11 +116,24 @@ public sealed class ObjectClampMover : MonoBehaviour
     [SerializeField] private AxisClamp m_ClampZ = new AxisClamp { Enabled = false, Min = -100f, Max = 100f };
 
     //========================
-    // インスペクター：回転グループ（操作用）
+    // インスペクター：回転（固定2系統・ローカル）
     //========================
-    [Header("=== 回転グループ（複数可・各キーで同時切替） ===")]
-    [Tooltip("例）Yキーで ①Y軸[0,-45,-90] ②Z軸[0,45,90] を同時に切替")]
-    [SerializeField] private RotationGroup[] m_RotationGroups;
+    [Header("=== 回転（固定2系統：A / B、ローカル） ===")]
+    [SerializeField]
+    private FixedRotation m_RotationA = new FixedRotation
+    {
+        Key = KeyCode.Y,
+        Axis = Axis.Y,
+        Angles = new float[] { 0f, 90f }
+    };
+
+    [SerializeField]
+    private FixedRotation m_RotationB = new FixedRotation
+    {
+        Key = KeyCode.U,
+        Axis = Axis.Z,
+        Angles = new float[] { 0f, 90f }
+    };
 
     //========================
     // インスペクター：完了ロック条件（位置＆回転“範囲”）
@@ -152,7 +143,7 @@ public sealed class ObjectClampMover : MonoBehaviour
     [SerializeField] private AxisGoalRange m_GoalPosYRange = new AxisGoalRange { Enabled = false, Min = 0f, Max = 0f };
     [SerializeField] private AxisGoalRange m_GoalPosZRange = new AxisGoalRange { Enabled = false, Min = 0f, Max = 0f };
 
-    [Header("=== 完了ロック条件（回転“範囲”/ワールド角） ===")]
+    [Header("=== 完了ロック条件（回転“範囲”/ローカル角） ===")]
     [SerializeField, Tooltip("回転完了範囲の評価対象（未指定なら自身）")]
     private Transform m_RotationGoalTarget;
 
@@ -167,6 +158,28 @@ public sealed class ObjectClampMover : MonoBehaviour
     [Header("ロック時サウンド（SE4）")]
     [SerializeField, Tooltip("ロック後に操作しようとした時に鳴らすSE")]
     private AudioClip m_SeBlocked;
+
+    //========================
+    // ★ 回転安定化：基準姿勢＋指令角（X/Y/Z）保持
+    //========================
+    [Header("=== 回転合成設定 ===")]
+    [SerializeField, Tooltip("合成順序（Yaw→Pitch→Roll の想定）")]
+    private RotationOrder m_Order = RotationOrder.YXZ;
+
+    private Quaternion m_BaseLocalRotation; // 起動時の基準
+    private float m_CmdAngleX;              // 指令角（度）
+    private float m_CmdAngleY;
+    private float m_CmdAngleZ;
+
+    private enum RotationOrder
+    {
+        XYZ,
+        XZY,
+        YXZ,
+        YZX,
+        ZXY,
+        ZYX,
+    }
 
     //========================
     // ランタイム
@@ -186,33 +199,13 @@ public sealed class ObjectClampMover : MonoBehaviour
 
     private void Start()
     {
-        // 回転初期角度の適用とランタイム初期化
-        if (m_RotationGroups != null)
-        {
-            for (int g = 0; g < m_RotationGroups.Length; ++g)
-            {
-                var group = m_RotationGroups[g];
-                if (group?.Entries == null) continue;
+        // 回転ランタイム初期化
+        if (m_RotationA != null) m_RotationA.ResetRuntime();
+        if (m_RotationB != null) m_RotationB.ResetRuntime();
 
-                for (int i = 0; i < group.Entries.Length; ++i)
-                {
-                    var e = group.Entries[i];
-                    if (e == null) continue;
-
-                    e.ResetRuntime();
-
-                    if (e.ApplyFirstAngleOnStart)
-                    {
-                        Transform t = (e.Target != null) ? e.Target : this.transform;
-                        if (t != null && e.Angles != null && e.Angles.Length > 0)
-                        {
-                            float a0 = NormalizeAngle(e.Angles[0]);
-                            ApplyWorldAxisAngle(t, e.Axis, a0);
-                        }
-                    }
-                }
-            }
-        }
+        // ★ 基準姿勢を保存（現在のlocalRotationを基準とし、指令角は0スタート）
+        m_BaseLocalRotation = transform.localRotation;
+        m_CmdAngleX = m_CmdAngleY = m_CmdAngleZ = 0f;
 
         // 初期状態で達成している場合もこの時点でロック
         CheckAndUpdateLock();
@@ -236,14 +229,9 @@ public sealed class ObjectClampMover : MonoBehaviour
         HandleMoveKey(in m_MoveUp);
         HandleMoveKey(in m_MoveDown);
 
-        // 回転グループ切替
-        if (m_RotationGroups != null)
-        {
-            for (int g = 0; g < m_RotationGroups.Length; ++g)
-            {
-                HandleRotationGroup(m_RotationGroups[g]);
-            }
-        }
+        // 回転（固定2系統・ローカル） ※合成は毎回「基準×固定順序」
+        HandleFixedRotation(m_RotationA);
+        HandleFixedRotation(m_RotationB);
 
         // 条件達成チェック
         CheckAndUpdateLock();
@@ -273,14 +261,9 @@ public sealed class ObjectClampMover : MonoBehaviour
         if (Input.GetKeyDown(m_MoveUp.Key) || PadBool.IsRightStickUp()) return true;
         if (Input.GetKeyDown(m_MoveDown.Key) || PadBool.IsRightStickDown()) return true;
 
-        if (m_RotationGroups != null)
-        {
-            for (int g = 0; g < m_RotationGroups.Length; ++g)
-            {
-                var rg = m_RotationGroups[g];
-                if (rg != null && rg.Key != KeyCode.None && Input.GetKeyDown(rg.Key)) return true;
-            }
-        }
+        if (m_RotationA != null && m_RotationA.Key != KeyCode.None && Input.GetKeyDown(m_RotationA.Key)) return true;
+        if (m_RotationB != null && m_RotationB.Key != KeyCode.None && Input.GetKeyDown(m_RotationB.Key)) return true;
+
         return false;
     }
 
@@ -333,12 +316,12 @@ public sealed class ObjectClampMover : MonoBehaviour
     }
 
     //========================
-    // 回転処理（ワールド・ピンポン）
+    // 回転処理（固定2系統・ローカル・ピンポン）
     //========================
-    private void HandleRotationGroup(RotationGroup group)
+    private void HandleFixedRotation(FixedRotation rot)
     {
-        if (group == null || group.Key == KeyCode.None) return;
-        if (!Input.GetKeyDown(group.Key)) return;
+        if (rot == null || rot.Key == KeyCode.None) return;
+        if (!Input.GetKeyDown(rot.Key)) return;
 
         if (m_IsLocked)
         {
@@ -347,72 +330,70 @@ public sealed class ObjectClampMover : MonoBehaviour
             return;
         }
 
-        bool appliedAny = false;
+        // 現インデックスの角度（絶対値）に更新 → 指令角へ反映
+        float angle = NormalizeAngle(GetCycleAngle(rot, rot._index));
+        SetCommandedAngle(rot.Axis, angle);
 
-        if (group.Entries != null)
+        // 合成して適用（毎回：基準×固定順序）
+        RebuildLocalRotation();
+
+        PlayOneShotSafe(rot.Se);
+
+        // 次インデックスへ（端で反転）
+        int count = (rot.Angles != null) ? rot.Angles.Length : 0;
+        int last = count - 1;
+
+        if (last >= 1)
         {
-            for (int i = 0; i < group.Entries.Length; ++i)
-            {
-                var e = group.Entries[i];
-                if (e == null || e.Angles == null || e.Angles.Length < 2) continue;
-
-                Transform t = (e.Target != null) ? e.Target : this.transform;
-                if (t == null) continue;
-
-                // 現インデックスの角度を適用（ワールド）
-                float angle = NormalizeAngle(GetCycleAngle(e, e._index));
-                ApplyWorldAxisAngle(t, e.Axis, angle);
-                appliedAny = true;
-
-                // 次インデックスへ（端で反転）
-                int last = e.Angles.Length - 1;
-                if (e._index <= 0) e._direction = +1;
-                else if (e._index >= last) e._direction = -1;
-                e._index += e._direction;
-            }
+            if (rot._index <= 0) rot._direction = +1;
+            else if (rot._index >= last) rot._direction = -1;
+            rot._index += rot._direction;
         }
 
-        if (appliedAny)
+        CheckAndUpdateLock();
+    }
+
+    private void SetCommandedAngle(Axis axis, float angleDeg)
+    {
+        switch (axis)
         {
-            PlayOneShotSafe(group.Se);
-            CheckAndUpdateLock();
+            case Axis.X: m_CmdAngleX = angleDeg; break;
+            case Axis.Y: m_CmdAngleY = angleDeg; break;
+            case Axis.Z: m_CmdAngleZ = angleDeg; break;
         }
     }
 
-    private static float GetCycleAngle(RotationEntry e, int index)
+    private void RebuildLocalRotation()
     {
-        if (e.Angles == null || e.Angles.Length == 0) return 0f;
-        index = Mathf.Clamp(index, 0, e.Angles.Length - 1);
-        return e.Angles[index];
+        // 指令角からクォータニオンを固定順序で合成
+        Quaternion qx = Quaternion.AngleAxis(m_CmdAngleX, Vector3.right);
+        Quaternion qy = Quaternion.AngleAxis(m_CmdAngleY, Vector3.up);
+        Quaternion qz = Quaternion.AngleAxis(m_CmdAngleZ, Vector3.forward);
+
+        Quaternion r;
+        switch (m_Order)
+        {
+            case RotationOrder.XYZ: r = qx * qy * qz; break;
+            case RotationOrder.XZY: r = qx * qz * qy; break;
+            case RotationOrder.YXZ: r = qy * qx * qz; break; // 既定：Yaw→Pitch→Roll
+            case RotationOrder.YZX: r = qy * qz * qx; break;
+            case RotationOrder.ZXY: r = qz * qx * qy; break;
+            default: r = qz * qy * qx; break; // ZYX
+        }
+
+        transform.localRotation = m_BaseLocalRotation * r;
+    }
+
+    private static float GetCycleAngle(FixedRotation r, int index)
+    {
+        if (r == null || r.Angles == null || r.Angles.Length == 0) return 0f;
+        index = Mathf.Clamp(index, 0, r.Angles.Length - 1);
+        return r.Angles[index];
     }
 
     private static float NormalizeAngle(float a)
     {
         return Mathf.Repeat(a, 360f); // 0..360
-    }
-
-    private static void ApplyWorldAxisAngle(Transform t, Axis axis, float angleDeg)
-    {
-        Vector3 worldEuler = t.eulerAngles; // ワールド
-        switch (axis)
-        {
-            case Axis.X:
-                {
-                    worldEuler.x = angleDeg;
-                    break;
-                }
-            case Axis.Y:
-                {
-                    worldEuler.y = angleDeg;
-                    break;
-                }
-            case Axis.Z:
-                {
-                    worldEuler.z = angleDeg;
-                    break;
-                }
-        }
-        t.rotation = Quaternion.Euler(worldEuler); // ワールド適用
     }
 
     //========================
@@ -425,7 +406,6 @@ public sealed class ObjectClampMover : MonoBehaviour
         bool posOk = EvaluatePositionGoal(out bool hasPos);
         bool rotOk = EvaluateRotationGoal(out bool hasRot);
 
-        // 位置にも回転にも“有効な範囲”が存在し、かつ両者とも満たされている場合のみロック
         if (hasPos && hasRot && posOk && rotOk)
         {
             m_IsLocked = true;
@@ -465,24 +445,23 @@ public sealed class ObjectClampMover : MonoBehaviour
         Transform t = (m_RotationGoalTarget != null) ? m_RotationGoalTarget : this.transform;
         if (t == null) return false;
 
-        Vector3 we = t.eulerAngles; // ワールド
-
+        Vector3 le = t.localEulerAngles; // ローカル角（※表示角は分解順序に依存）
         bool ok = true;
 
         if (m_GoalRotXRange.Enabled)
         {
             hasActive = true;
-            ok &= IsAngleInRange(we.x, m_GoalRotXRange.Min, m_GoalRotXRange.Max, m_AngleEpsilon);
+            ok &= IsAngleInRange(le.x, m_GoalRotXRange.Min, m_GoalRotXRange.Max, m_AngleEpsilon);
         }
         if (m_GoalRotYRange.Enabled)
         {
             hasActive = true;
-            ok &= IsAngleInRange(we.y, m_GoalRotYRange.Min, m_GoalRotYRange.Max, m_AngleEpsilon);
+            ok &= IsAngleInRange(le.y, m_GoalRotYRange.Min, m_GoalRotYRange.Max, m_AngleEpsilon);
         }
         if (m_GoalRotZRange.Enabled)
         {
             hasActive = true;
-            ok &= IsAngleInRange(we.z, m_GoalRotZRange.Min, m_GoalRotZRange.Max, m_AngleEpsilon);
+            ok &= IsAngleInRange(le.z, m_GoalRotZRange.Min, m_GoalRotZRange.Max, m_AngleEpsilon);
         }
 
         return ok;
@@ -505,7 +484,6 @@ public sealed class ObjectClampMover : MonoBehaviour
 
         if (Mathf.Approximately(min, max))
         {
-            // 点指定：±eps で判定
             return Mathf.Abs(Mathf.DeltaAngle(angle, min)) <= eps;
         }
 
@@ -515,7 +493,6 @@ public sealed class ObjectClampMover : MonoBehaviour
         }
         else
         {
-            // wrap: [min..360) ∪ [0..max]
             return angle >= (min - eps) || angle <= (max + eps);
         }
     }
@@ -533,7 +510,6 @@ public sealed class ObjectClampMover : MonoBehaviour
         }
         else
         {
-            // ※ ロック時に完全停止させたい場合は m_AudioSource を必ず割り当ててください。
             AudioSource.PlayClipAtPoint(clip, transform.position);
         }
     }
