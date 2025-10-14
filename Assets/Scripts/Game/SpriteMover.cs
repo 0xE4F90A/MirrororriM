@@ -4,11 +4,25 @@
 [RequireComponent(typeof(Rigidbody))]
 public sealed class SpriteMover : MonoBehaviour
 {
-    [Header("表示に使う4つの子オブジェクト（インスペクターで割当）")]
-    [SerializeField] private GameObject m_Child1; // 右：押下中／上：押下中(反転)
-    [SerializeField] private GameObject m_Child2; // 左：押下中／下：押下中(反転)
-    [SerializeField] private GameObject m_Child3; // 右/左 のキーを離した瞬間の表示（左は反転）
-    [SerializeField] private GameObject m_Child4; // 上/下 のキーを離した瞬間の表示（下は反転）
+    //=== 表示に使う子オブジェクト（反転なし・全割り当て） ==========
+    [Header("=== 表示: 押下中 ===")]
+    [SerializeField] private GameObject m_PressRight;
+    [SerializeField] private GameObject m_PressLeft;
+    [SerializeField] private GameObject m_PressUp;
+    [SerializeField] private GameObject m_PressDown;
+
+    [Header("=== 表示: キー離し直後 ===")]
+    [SerializeField] private GameObject m_ReleaseRight;
+    [SerializeField] private GameObject m_ReleaseLeft;
+    [SerializeField] private GameObject m_ReleaseUp;
+    [SerializeField] private GameObject m_ReleaseDown;
+
+    [Header("起動時に表示するオブジェクト（未指定なら全非表示）")]
+    [SerializeField] private GameObject m_DefaultVisual;
+    //=====================================================
+
+    [Header("移動向き(左キーか上キー)")]
+    [SerializeField] private bool m_IsKeyLeft = false;
 
     [Header("移動設定")]
     [SerializeField] private float m_MoveSpeed = 2.0f;
@@ -45,16 +59,11 @@ public sealed class SpriteMover : MonoBehaviour
     {
         m_MovementLocked = false;
         RestoreConstraints();
-        // 表示は元のスクリプトのロジックに任せる（何も表示しない場合は必要に応じて ShowOnly など呼ぶ）
+        // 表示は以降の入力に従って更新される
     }
     // ==========================================================
 
     private enum Dir { None, Right, Left, Up, Down }
-
-    private Vector3 m_InitScale1 = Vector3.one;
-    private Vector3 m_InitScale2 = Vector3.one;
-    private Vector3 m_InitScale3 = Vector3.one;
-    private Vector3 m_InitScale4 = Vector3.one;
 
     private Dir m_LastPressed = Dir.None;
 
@@ -68,13 +77,9 @@ public sealed class SpriteMover : MonoBehaviour
 
     private void Awake()
     {
-        if (m_Child1 != null) m_InitScale1 = m_Child1.transform.localScale;
-        if (m_Child2 != null) m_InitScale2 = m_Child2.transform.localScale;
-        if (m_Child3 != null) m_InitScale3 = m_Child3.transform.localScale;
-        if (m_Child4 != null) m_InitScale4 = m_Child4.transform.localScale;
-
         // 初期表示
-        ShowOnly(m_Child3, false);
+        if (m_DefaultVisual != null) ShowOnly(m_DefaultVisual);
+        else HideAllChildren();
 
         // Rigidbody 準備
         m_Rigidbody = GetComponent<Rigidbody>();
@@ -118,22 +123,10 @@ public sealed class SpriteMover : MonoBehaviour
         }
 
         // --- 離した瞬間の表示 ---
-        if (GetKeyUpRight())
-        {
-            ShowReleaseHorizontal(isLeft: false); // 右を離した → 3番のみ
-        }
-        if (GetKeyUpLeft())
-        {
-            ShowReleaseVertical(isDown: false);   // 左を離した → 4番のみ
-        }
-        if (GetKeyUpUp())
-        {
-            ShowReleaseHorizontal(isLeft: true);  // 上を離した → 3番（反転）
-        }
-        if (GetKeyUpDown())
-        {
-            ShowReleaseVertical(isDown: true);    // 下を離した → 4番（反転）
-        }
+        if (GetKeyUpRight()) ShowReleaseHorizontal(isLeft: false);
+        if (GetKeyUpLeft()) ShowReleaseHorizontal(isLeft: true);
+        if (GetKeyUpUp()) ShowReleaseVertical(isDown: false);
+        if (GetKeyUpDown()) ShowReleaseVertical(isDown: true);
 
         // --- 押下開始の記録 ---
         if (GetKeyDownRight()) { m_LastPressed = Dir.Right; }
@@ -142,8 +135,7 @@ public sealed class SpriteMover : MonoBehaviour
         if (GetKeyDownDown()) { m_LastPressed = Dir.Down; }
 
         // --- 押下中の表示（最後に押した方向を優先） ---
-        bool anyHeld = IsAnyHeld();
-        if (anyHeld)
+        if (IsAnyHeld())
         {
             Dir active = GetActiveHeldDir();
             ShowPressed(active);
@@ -155,10 +147,7 @@ public sealed class SpriteMover : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (m_Rigidbody == null)
-        {
-            return;
-        }
+        if (m_Rigidbody == null) return;
 
         // === LOCK: 物理側も完全停止 ===
         if (m_MovementLocked)
@@ -166,7 +155,7 @@ public sealed class SpriteMover : MonoBehaviour
 #if UNITY_6000_0_OR_NEWER
             m_Rigidbody.linearVelocity = Vector3.zero;
 #else
-    m_Rigidbody.velocity = Vector3.zero;
+            m_Rigidbody.velocity = Vector3.zero;
 #endif
             m_Rigidbody.angularVelocity = Vector3.zero;
             return;
@@ -182,65 +171,58 @@ public sealed class SpriteMover : MonoBehaviour
     }
 
     // ===== 入力→3D方向変換 =====
-
     private Vector3 ReadMoveDirection3D()
     {
         int x = 0;
         int y = 0;
 
-        if (GetKeyRight()) x += 1;
-        if (GetKeyLeft()) x -= 1;
-        if (GetKeyUp()) y += 1;
-        if (GetKeyDown()) y -= 1;
-
-        if (x == 0 && y == 0)
+        if(m_IsKeyLeft)
         {
-            return Vector3.zero;
-        }
-
-        if (m_MoveInXZPlane)
-        {
-            return new Vector3(x, 0f, y).normalized;
+            if (GetKeyRight()) y -= 1;
+            if (GetKeyLeft()) y += 1;
+            if (GetKeyUp()) x += 1;
+            if (GetKeyDown()) x -= 1;
         }
         else
         {
-            return new Vector3(x, y, 0f).normalized;
+            if (GetKeyRight()) x += 1;
+            if (GetKeyLeft()) x -= 1;
+            if (GetKeyUp()) y += 1;
+            if (GetKeyDown()) y -= 1;
         }
+        if (x == 0 && y == 0) return Vector3.zero;
+
+        if (m_MoveInXZPlane) return new Vector3(x, 0f, y).normalized;
+        else return new Vector3(x, y, 0f).normalized;
     }
 
     // ===== 入力ヘルパ =====
+    private static bool GetKeyRight() => Input.GetKey(KeyCode.D);
+    private static bool GetKeyLeft() => Input.GetKey(KeyCode.A);
+    private static bool GetKeyUp() => Input.GetKey(KeyCode.W);
+    private static bool GetKeyDown() => Input.GetKey(KeyCode.S);
 
-    private static bool GetKeyRight() { return Input.GetKey(KeyCode.D); }
-    private static bool GetKeyLeft() { return Input.GetKey(KeyCode.A); }
-    private static bool GetKeyUp() { return Input.GetKey(KeyCode.W); }
-    private static bool GetKeyDown() { return Input.GetKey(KeyCode.S); }
+    private static bool GetKeyDownRight() => Input.GetKeyDown(KeyCode.D);
+    private static bool GetKeyDownLeft() => Input.GetKeyDown(KeyCode.A);
+    private static bool GetKeyDownUp() => Input.GetKeyDown(KeyCode.W);
+    private static bool GetKeyDownDown() => Input.GetKeyDown(KeyCode.S);
 
-    private static bool GetKeyDownRight() { return Input.GetKeyDown(KeyCode.D); }
-    private static bool GetKeyDownLeft() { return Input.GetKeyDown(KeyCode.A); }
-    private static bool GetKeyDownUp() { return Input.GetKeyDown(KeyCode.W); }
-    private static bool GetKeyDownDown() { return Input.GetKeyDown(KeyCode.S); }
+    private static bool GetKeyUpRight() => Input.GetKeyUp(KeyCode.D);
+    private static bool GetKeyUpLeft() => Input.GetKeyUp(KeyCode.A);
+    private static bool GetKeyUpUp() => Input.GetKeyUp(KeyCode.W);
+    private static bool GetKeyUpDown() => Input.GetKeyUp(KeyCode.S);
 
-    private static bool GetKeyUpRight() { return Input.GetKeyUp(KeyCode.D); }
-    private static bool GetKeyUpLeft() { return Input.GetKeyUp(KeyCode.A); }
-    private static bool GetKeyUpUp() { return Input.GetKeyUp(KeyCode.W); }
-    private static bool GetKeyUpDown() { return Input.GetKeyUp(KeyCode.S); }
+    private static bool IsHeldRight() => GetKeyRight();
+    private static bool IsHeldLeft() => GetKeyLeft();
+    private static bool IsHeldUp() => GetKeyUp();
+    private static bool IsHeldDown() => GetKeyDown();
 
-    private static bool IsHeldRight() { return GetKeyRight(); }
-    private static bool IsHeldLeft() { return GetKeyLeft(); }
-    private static bool IsHeldUp() { return GetKeyUp(); }
-    private static bool IsHeldDown() { return GetKeyDown(); }
-
-    private static bool IsAnyHeld()
-    {
-        return GetKeyRight() || GetKeyLeft() || GetKeyUp() || GetKeyDown();
-    }
+    private static bool IsAnyHeld() => GetKeyRight() || GetKeyLeft() || GetKeyUp() || GetKeyDown();
 
     private Dir GetActiveHeldDir()
     {
         if (m_LastPressed != Dir.None && IsHeld(m_LastPressed))
-        {
             return m_LastPressed;
-        }
 
         if (IsHeldUp()) return Dir.Up;
         if (IsHeldDown()) return Dir.Down;
@@ -262,71 +244,57 @@ public sealed class SpriteMover : MonoBehaviour
         }
     }
 
-    // ===== 表示制御 =====
-
+    // ===== 表示制御（反転なし） =====
     private void ShowPressed(Dir dir)
     {
         switch (dir)
         {
-            case Dir.Right:
-                ShowOnly(m_Child1, false);
-                break;
-            case Dir.Left:
-                ShowOnly(m_Child2, false);
-                break;
-            case Dir.Up:
-                ShowOnly(m_Child1, true);
-                break;
-            case Dir.Down:
-                ShowOnly(m_Child2, true);
-                break;
-            default:
-                break;
+            case Dir.Right: ShowOnly(m_PressRight); break;
+            case Dir.Left: ShowOnly(m_PressLeft); break;
+            case Dir.Up: ShowOnly(m_PressUp); break;
+            case Dir.Down: ShowOnly(m_PressDown); break;
+            default: break;
         }
     }
 
     private void ShowReleaseHorizontal(bool isLeft)
     {
-        ShowOnly(m_Child3, isLeft);
+        ShowOnly(isLeft ? m_ReleaseLeft : m_ReleaseRight);
     }
 
     private void ShowReleaseVertical(bool isDown)
     {
-        ShowOnly(m_Child4, isDown);
+        ShowOnly(isDown ? m_ReleaseDown : m_ReleaseUp);
     }
 
-    private void ShowOnly(GameObject target, bool flipX)
+    private void ShowOnly(GameObject target)
     {
-        if (m_Child1 != null) m_Child1.SetActive(target == m_Child1);
-        if (m_Child2 != null) m_Child2.SetActive(target == m_Child2);
-        if (m_Child3 != null) m_Child3.SetActive(target == m_Child3);
-        if (m_Child4 != null) m_Child4.SetActive(target == m_Child4);
+        // すべての表示オブジェクトを列挙して排他的に切替
+        if (m_PressRight) m_PressRight.SetActive(target == m_PressRight);
+        if (m_PressLeft) m_PressLeft.SetActive(target == m_PressLeft);
+        if (m_PressUp) m_PressUp.SetActive(target == m_PressUp);
+        if (m_PressDown) m_PressDown.SetActive(target == m_PressDown);
 
-        if (target == null)
-        {
-            return; // 全て非表示
-        }
+        if (m_ReleaseRight) m_ReleaseRight.SetActive(target == m_ReleaseRight);
+        if (m_ReleaseLeft) m_ReleaseLeft.SetActive(target == m_ReleaseLeft);
+        if (m_ReleaseUp) m_ReleaseUp.SetActive(target == m_ReleaseUp);
+        if (m_ReleaseDown) m_ReleaseDown.SetActive(target == m_ReleaseDown);
 
-        if (target == m_Child1) ApplyFlip(m_Child1.transform, m_InitScale1, flipX);
-        else if (target == m_Child2) ApplyFlip(m_Child2.transform, m_InitScale2, flipX);
-        else if (target == m_Child3) ApplyFlip(m_Child3.transform, m_InitScale3, flipX);
-        else if (target == m_Child4) ApplyFlip(m_Child4.transform, m_InitScale4, flipX);
-    }
-
-    private static void ApplyFlip(Transform tr, Vector3 initScale, bool flipX)
-    {
-        if (tr == null) return;
-        float x = Mathf.Abs(initScale.x) * (flipX ? -1f : 1f);
-        tr.localScale = new Vector3(x, initScale.y, initScale.z);
+        // target==null なら単に全非表示になる
     }
 
     // === LOCK: 便利関数 ================================
     private void HideAllChildren()
     {
-        if (m_Child1 != null) m_Child1.SetActive(false);
-        if (m_Child2 != null) m_Child2.SetActive(false);
-        if (m_Child3 != null) m_Child3.SetActive(false);
-        if (m_Child4 != null) m_Child4.SetActive(false);
+        if (m_PressRight) m_PressRight.SetActive(false);
+        if (m_PressLeft) m_PressLeft.SetActive(false);
+        if (m_PressUp) m_PressUp.SetActive(false);
+        if (m_PressDown) m_PressDown.SetActive(false);
+
+        if (m_ReleaseRight) m_ReleaseRight.SetActive(false);
+        if (m_ReleaseLeft) m_ReleaseLeft.SetActive(false);
+        if (m_ReleaseUp) m_ReleaseUp.SetActive(false);
+        if (m_ReleaseDown) m_ReleaseDown.SetActive(false);
     }
 
     private void ApplyLockStateImmediate()
@@ -336,9 +304,7 @@ public sealed class SpriteMover : MonoBehaviour
         m_LastPressed = Dir.None;
 
         if (m_HideVisualWhenLocked)
-        {
             HideAllChildren();
-        }
 
         // 物理停止
         if (m_Rigidbody != null)
@@ -346,13 +312,12 @@ public sealed class SpriteMover : MonoBehaviour
 #if UNITY_6000_0_OR_NEWER
             m_Rigidbody.linearVelocity = Vector3.zero;
 #else
-    m_Rigidbody.velocity = Vector3.zero;
+            m_Rigidbody.velocity = Vector3.zero;
 #endif
             m_Rigidbody.angularVelocity = Vector3.zero;
 
             if (m_FreezeAllPositionOnLock)
             {
-                // 位置XYZ + 回転をフリーズ
                 m_OriginalConstraints = m_Rigidbody.constraints; // 念のため最新を保存
                 m_Rigidbody.constraints =
                     RigidbodyConstraints.FreezePositionX |

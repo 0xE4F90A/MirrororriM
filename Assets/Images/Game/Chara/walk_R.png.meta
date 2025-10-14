@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: c82a31c900d01ac4294e71672b888418
+guid: 92fa9f71fc5c732438c5f853030ae07d
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -81,7 +81,59 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
     buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -97,7 +149,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: waitback_0
+      name: walk_R_0
       rect:
         serializedVersion: 2
         x: 0
@@ -112,14 +164,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 44029077464b71246bef2faad1e85934
-      internalID: -1553387725
+      spriteID: 27eb636ea96f9ae4c8b67d74f6f03cf2
+      internalID: -1192889469
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: waitback_1
+      name: walk_R_1
       rect:
         serializedVersion: 2
         x: 2048
@@ -134,14 +186,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3c714313071bcc046830568b5124573e
-      internalID: -538652708
+      spriteID: bdb3d6a876f50ad438eeb45509b61049
+      internalID: 1079226191
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: waitback_2
+      name: walk_R_2
       rect:
         serializedVersion: 2
         x: 4096
@@ -156,14 +208,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: fc523ad6de9a47e409aebfb1de0877d7
-      internalID: 902476067
+      spriteID: 6003fae926795fe438282c4c497eb2cb
+      internalID: 64276391
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: waitback_3
+      name: walk_R_3
       rect:
         serializedVersion: 2
         x: 0
@@ -178,14 +230,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 269c588c1a8bcb44ba89a2b20b3544a2
-      internalID: -1803239532
+      spriteID: dae1c6f556900f34fb1573b49a366366
+      internalID: 1449555598
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: waitback_4
+      name: walk_R_4
       rect:
         serializedVersion: 2
         x: 2048
@@ -200,14 +252,14 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d9655c006bb5b75458ad8e57338e9c97
-      internalID: 1149402365
+      spriteID: c39eecb7c3ba1514395a457ce8f525df
+      internalID: -223584887
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: waitback_5
+      name: walk_R_5
       rect:
         serializedVersion: 2
         x: 4096
@@ -222,8 +274,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: bb3fe935cab433944aa0a24d17c141c1
-      internalID: -1993274874
+      spriteID: 41641a1cc8cd9484082fd1d30f6afb23
+      internalID: -1057071944
       vertices: []
       indices: 
       edges: []
@@ -232,7 +284,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: b22a7ebfd54c8aa4e97f8978571a2e05
+    spriteID: c8cc79114c7fe7d4e98a4084ba5d4a29
     internalID: 0
     vertices: []
     indices: 
@@ -242,12 +294,12 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      waitback_0: -1553387725
-      waitback_1: -538652708
-      waitback_2: 902476067
-      waitback_3: -1803239532
-      waitback_4: 1149402365
-      waitback_5: -1993274874
+      walk_R_0: -1192889469
+      walk_R_1: 1079226191
+      walk_R_2: 64276391
+      walk_R_3: 1449555598
+      walk_R_4: -223584887
+      walk_R_5: -1057071944
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

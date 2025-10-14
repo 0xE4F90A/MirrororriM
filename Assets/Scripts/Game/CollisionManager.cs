@@ -28,6 +28,7 @@ public sealed class CollisionManager : MonoBehaviour
         }
     }
 
+
     [Serializable]
     public struct AngleRange
     {

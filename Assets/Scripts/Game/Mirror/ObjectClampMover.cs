@@ -85,14 +85,27 @@ public sealed class ObjectClampMover : MonoBehaviour
         [Tooltip("押下時に再生するSE")]
         public AudioClip Se;
 
+        // 初回押下の扱い
+        [Header("初回押下の挙動")]
+        [Tooltip("初回は必ず配列の先頭(A[0])から始めます")]
+        public bool StartFromFirst = true;
+        [Tooltip("初回に A[0] が現在角とほぼ同じなら、A[1] から始めます")]
+        public bool SkipFirstIfSame = true;
+
+        [Tooltip("角度比較の許容誤差(度)")]
+        public float FirstPressEps = 0.1f;
+
         // ランタイム（ピンポン用）
         [NonSerialized] public int _index = 0;
         [NonSerialized] public int _direction = +1;
+        //  初回押下かどうか
+        [NonSerialized] public bool _appliedOnce = false;
 
         public void ResetRuntime()
         {
             _index = 0;
             _direction = +1;
+            _appliedOnce = false;
         }
     }
     //=======================================================================
@@ -155,12 +168,16 @@ public sealed class ObjectClampMover : MonoBehaviour
     [SerializeField, Tooltip("位置範囲の端に対するマージン（m）")] private float m_PositionEpsilon = 0.01f;
     [SerializeField, Tooltip("角度範囲の端に対するマージン（度）")] private float m_AngleEpsilon = 0.5f;
 
+    [Header("達成時サウンド（SE3）")]
+    [SerializeField, Tooltip("成功（ロック）に入った瞬間に一度だけ再生")]
+    private AudioClip m_SeGoal;
+
     [Header("ロック時サウンド（SE4）")]
     [SerializeField, Tooltip("ロック後に操作しようとした時に鳴らすSE")]
     private AudioClip m_SeBlocked;
 
     //========================
-    // ★ 回転安定化：基準姿勢＋指令角（X/Y/Z）保持
+    // 回転安定化：基準姿勢＋指令角（X/Y/Z）保持
     //========================
     [Header("=== 回転合成設定 ===")]
     [SerializeField, Tooltip("合成順序（Yaw→Pitch→Roll の想定）")]
@@ -170,6 +187,11 @@ public sealed class ObjectClampMover : MonoBehaviour
     private float m_CmdAngleX;              // 指令角（度）
     private float m_CmdAngleY;
     private float m_CmdAngleZ;
+
+    //=== 公開API：達成状態とイベント =========================
+    public bool IsLocked => m_IsLocked;                    // 達成(ロック)状態を公開
+    public event Action<bool> OnLockedChanged;             // true=達成した瞬間に発火
+    //======================================================
 
     private enum RotationOrder
     {
@@ -203,7 +225,7 @@ public sealed class ObjectClampMover : MonoBehaviour
         if (m_RotationA != null) m_RotationA.ResetRuntime();
         if (m_RotationB != null) m_RotationB.ResetRuntime();
 
-        // ★ 基準姿勢を保存（現在のlocalRotationを基準とし、指令角は0スタート）
+        // 基準姿勢を保存（現在のlocalRotationを基準とし、指令角は0スタート）
         m_BaseLocalRotation = transform.localRotation;
         m_CmdAngleX = m_CmdAngleY = m_CmdAngleZ = 0f;
 
@@ -250,6 +272,22 @@ public sealed class ObjectClampMover : MonoBehaviour
         if (m_GoalPosZRange.Enabled && m_GoalPosZRange.Min > m_GoalPosZRange.Max) { float t = m_GoalPosZRange.Min; m_GoalPosZRange.Min = m_GoalPosZRange.Max; m_GoalPosZRange.Max = t; }
         // 角度範囲（Min>Max）は wrap として扱うので入れ替えはしない
     }
+
+    private static bool AngleApproximately(float aDeg, float bDeg, float epsDeg)
+    {
+        return Mathf.Abs(Mathf.DeltaAngle(aDeg, bDeg)) <= epsDeg;
+    }
+
+    private float GetCommandedAngle(Axis axis)
+    {
+        switch (axis)
+        {
+            case Axis.X: return m_CmdAngleX;
+            case Axis.Y: return m_CmdAngleY;
+            default: return m_CmdAngleZ;
+        }
+    }
+
 
     //========================
     // 入力ユーティリティ（ロック中の検出用）
@@ -330,28 +368,63 @@ public sealed class ObjectClampMover : MonoBehaviour
             return;
         }
 
-        // 現インデックスの角度（絶対値）に更新 → 指令角へ反映
-        float angle = NormalizeAngle(GetCycleAngle(rot, rot._index));
-        SetCommandedAngle(rot.Axis, angle);
-
-        // 合成して適用（毎回：基準×固定順序）
-        RebuildLocalRotation();
-
-        PlayOneShotSafe(rot.Se);
-
-        // 次インデックスへ（端で反転）
         int count = (rot.Angles != null) ? rot.Angles.Length : 0;
+        if (count <= 0) return;
+
         int last = count - 1;
 
+        // === どのインデックスを今回「適用」するか決定 ===
+        int idxToApply;
+        if (!rot._appliedOnce && rot.StartFromFirst)
+        {
+            // まず A[0]
+            idxToApply = 0;
+
+            // 先頭が現在角と同じなら A[1] から開始（見た目変化なしを回避）
+            if (rot.SkipFirstIfSame && last >= 1)
+            {
+                float target0 = rot.Angles[0];
+                float current = GetCommandedAngle(rot.Axis);
+                if (AngleApproximately(target0, current, rot.FirstPressEps))
+                {
+                    idxToApply = 1;
+                }
+            }
+        }
+        else
+        {
+            // 2回目以降はランタイムの _index をそのまま使う
+            idxToApply = Mathf.Clamp(rot._index, 0, last);
+        }
+
+        // === 適用 ===
+        float angle = NormalizeAngle(rot.Angles[idxToApply]);
+        SetCommandedAngle(rot.Axis, angle);
+        RebuildLocalRotation();
+        PlayOneShotSafe(rot.Se);
+
+        // === 次回用に ping-pong 進行位置を更新 ===
         if (last >= 1)
         {
-            if (rot._index <= 0) rot._direction = +1;
-            else if (rot._index >= last) rot._direction = -1;
-            rot._index += rot._direction;
+            // 端で反転するピンポン
+            int dir = rot._direction;
+            if (idxToApply <= 0) dir = +1;
+            else if (idxToApply >= last) dir = -1;
+
+            rot._direction = dir;
+            rot._index = Mathf.Clamp(idxToApply + dir, 0, last);
         }
+        else
+        {
+            rot._index = 0;
+            rot._direction = +1;
+        }
+
+        rot._appliedOnce = true;
 
         CheckAndUpdateLock();
     }
+
 
     private void SetCommandedAngle(Axis axis, float angleDeg)
     {
@@ -409,6 +482,12 @@ public sealed class ObjectClampMover : MonoBehaviour
         if (hasPos && hasRot && posOk && rotOk)
         {
             m_IsLocked = true;
+
+            // 一度だけ成功SEを再生
+            PlayOneShotSafe(m_SeGoal);
+
+            // 達成した瞬間に通知
+            OnLockedChanged?.Invoke(true);
         }
     }
 
