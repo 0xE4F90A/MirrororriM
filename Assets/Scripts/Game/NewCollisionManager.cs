@@ -43,7 +43,7 @@ public sealed class NewCollisionManager : MonoBehaviour
     public sealed class LockToggleEntry
     {
         [Header("達成判定ソース（ObjectClampMover を割当て）")]
-        public ObjectClampMover Source;
+        public ObjectLocker Source;
 
         [Tooltip("true=達成(IsLocked)を反転して扱う")]
         public bool Invert;
@@ -127,7 +127,7 @@ public sealed class NewCollisionManager : MonoBehaviour
         bool s = false;
         if (e.Source != null)
         {
-            s = e.Source.IsLocked; // ObjectClampMover 側の達成フラグ
+            s = e.Source.GetLocked(); // ObjectClampMover 側の達成フラグ
         }
         return e.Invert ? !s : s;
     }

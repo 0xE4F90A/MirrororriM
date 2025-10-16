@@ -64,6 +64,9 @@ public sealed class CatGoal : MonoBehaviour
     [Tooltip("Pause したままこのオブジェクトが破棄/無効化された場合に備えて自動復帰")]
     [SerializeField] private bool m_UnpauseOnDisableOrDestroy = true;
 
+    [Tooltip("ONでエンター等の入力が不要か？")]
+    [SerializeField] private bool m_isReturnOn = false;
+
     [Header("=== イベント（任意） ===")]
     public UnityEvent OnGoalEnter;     // 範囲に入った瞬間
     public UnityEvent OnGoalExit;      // 範囲から出た瞬間
@@ -111,6 +114,7 @@ public sealed class CatGoal : MonoBehaviour
         bool inRange = IsInRange();
 
         // === エッジ：Enter ===
+        // === エッジ：Enter ===
         if (inRange && !m_WasInRange)
         {
             if (m_RawImageToShow != null) m_RawImageToShow.enabled = true;
@@ -122,12 +126,13 @@ public sealed class CatGoal : MonoBehaviour
                 var mover = m_Base.GetComponent<SpriteMover>();
                 if (mover == null)
                 {
-                    // Base 直下に無い場合は子からも探す（任意だが便利）
                     mover = m_Base.GetComponentInChildren<SpriteMover>(true);
                 }
                 if (mover != null)
                 {
-                    mover.LockMovement(m_LockHideVisual);
+                    // ★ポイント：自動遷移モード(m_isReturnOn)なら表示は消さずにロックだけ行う
+                    bool hideVisual = m_LockHideVisual && !m_isReturnOn;
+                    mover.LockMovement(hideVisual);
                 }
             }
 
@@ -150,12 +155,15 @@ public sealed class CatGoal : MonoBehaviour
 
         m_WasInRange = inRange;
 
+
         // === シーン遷移キー ===
         bool pressed =
             Input.GetKeyDown(KeyCode.Return) ||
             Input.GetKeyDown(KeyCode.KeypadEnter) ||
             Input.GetKeyDown(KeyCode.Space) ||
             Input.GetKeyDown(KeyCode.Escape);
+
+        if(m_isReturnOn) pressed = true;
 
         if (pressed && (!m_RequireInRangeToTransition || inRange))
         {
