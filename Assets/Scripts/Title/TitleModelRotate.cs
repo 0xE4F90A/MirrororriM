@@ -36,19 +36,19 @@ public sealed class TitleModelRotate : MonoBehaviour
         // 右→X +2°, 左→Z +2°, 上→Y +2°, 下→Y -2°
         Vector3 eulerOffset = Vector3.zero;
 
-        if (Input.GetKey(KeyCode.RightArrow) || PadBool.IsRightStickRight() || PadBool.IsLeftStickRight())
+        if (Input.GetKey(KeyCode.RightArrow) || PadBool.IsRightStickRight() || PadBool.IsLeftStickRight() || PadBool.IsDpadRightHeld())
         {
             eulerOffset.y += m_TiltDegrees;
         }
-        if (Input.GetKey(KeyCode.LeftArrow) || PadBool.IsRightStickLeft() || PadBool.IsLeftStickLeft())
+        if (Input.GetKey(KeyCode.LeftArrow) || PadBool.IsRightStickLeft() || PadBool.IsLeftStickLeft() || PadBool.IsDpadLeftHeld())
         {
             eulerOffset.y -= m_TiltDegrees;
         }
-        if (Input.GetKey(KeyCode.UpArrow) || PadBool.IsRightStickUp() || PadBool.IsLeftStickUp())
+        if (Input.GetKey(KeyCode.UpArrow) || PadBool.IsRightStickUp() || PadBool.IsLeftStickUp() || PadBool.IsDpadUpHeld())
         {
             eulerOffset.x += m_TiltDegrees;
         }
-        if (Input.GetKey(KeyCode.DownArrow) || PadBool.IsRightStickDown() || PadBool.IsLeftStickDown())
+        if (Input.GetKey(KeyCode.DownArrow) || PadBool.IsRightStickDown() || PadBool.IsLeftStickDown() || PadBool.IsDpadDownHeld())
         {
             eulerOffset.x -= m_TiltDegrees;
         }

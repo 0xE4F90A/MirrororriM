@@ -4028,7 +4028,7 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: cf5d04084a2d0be47900185badf96f48, type: 3}
   m_PrefabInstance: {fileID: 1482212447}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &1556047441
+--- !u!1 &1538919218
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4036,22 +4036,43 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1556047443}
-  - component: {fileID: 1556047442}
+  - component: {fileID: 1538919221}
+  - component: {fileID: 1538919220}
+  - component: {fileID: 1538919219}
   m_Layer: 0
-  m_Name: EscapeSceneManager
+  m_Name: SceneManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1556047442
+--- !u!114 &1538919219
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1556047441}
+  m_GameObject: {fileID: 1538919218}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bdb537a8f5e6f04eb828279ac0047bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Key: 32
+  m_HoldSeconds: 1
+  m_FireOnce: 1
+  m_SceneName: Stage6
+  m_LoadMode: 0
+  m_UseUnscaledTime: 1
+  m_ResetOnEnable: 1
+  m_DebugProgressLog: 0
+--- !u!114 &1538919220
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1538919218}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2bdd982ed0fe507498dbbb36717e339e, type: 3}
@@ -4061,19 +4082,19 @@ MonoBehaviour:
   - m_UseSceneName: 1
     m_SceneName: StageSelectScene
     m_SceneBuildIndex: 0
-    m_Keys: 1b000000
+    m_Key: 0
     m_Async: 0
     m_LoadMode: 0
---- !u!4 &1556047443
+--- !u!4 &1538919221
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1556047441}
+  m_GameObject: {fileID: 1538919218}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.6599135, y: -3.4059262, z: 31.033516}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -5045,4 +5066,4 @@ SceneRoots:
   - {fileID: 718058105}
   - {fileID: 270484098}
   - {fileID: 133252232}
-  - {fileID: 1556047443}
+  - {fileID: 1538919221}

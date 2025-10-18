@@ -65,15 +65,19 @@ public sealed class SpriteMover : MonoBehaviour
 
     private enum Dir { None, Right, Left, Up, Down }
 
+    // 直近に押し始めた方向（Held優先の決定に使う）
     private Dir m_LastPressed = Dir.None;
 
     // 物理移動用
     private Rigidbody m_Rigidbody;
-    private Vector3 m_MoveDir3D = Vector3.zero; // Updateで入力を読み、FixedUpdateで使用
+    private Vector3 m_MoveDir3D = Vector3.zero; // Updateで入力を読み、FixedUpdateで適用
 
-    // === LOCK: 追加（元の拘束値の保持） =========================
+    // === LOCK: 元の拘束値の保持 =========================
     private RigidbodyConstraints m_OriginalConstraints;
-    // ===========================================================
+    // ====================================================
+
+    // --- 前フレームの押下状態（エッジ検出用） ---
+    private bool m_PrevHeldRight, m_PrevHeldLeft, m_PrevHeldUp, m_PrevHeldDown;
 
     private void Awake()
     {
@@ -88,22 +92,26 @@ public sealed class SpriteMover : MonoBehaviour
             m_Rigidbody = gameObject.AddComponent<Rigidbody>();
         }
         m_Rigidbody.useGravity = m_UseGravity;
-        m_Rigidbody.isKinematic = false; // MovePositionで衝突を止めるには非キネマティックにする
+        m_Rigidbody.isKinematic = false;
         m_Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         m_Rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotation; // 物理で倒れないように
+        m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
 
         if (m_MoveInXZPlane && m_FreezeYPosition)
         {
             m_Rigidbody.constraints |= RigidbodyConstraints.FreezePositionY;
         }
 
-        // === LOCK: 追加（元拘束保存 & 起動時ロック反映） ===
         m_OriginalConstraints = m_Rigidbody.constraints;
+
+        // 起動時ロック反映
         if (m_MovementLocked)
         {
             ApplyLockStateImmediate();
         }
+
+        // 前フレーム押下状態の初期化
+        m_PrevHeldRight = m_PrevHeldLeft = m_PrevHeldUp = m_PrevHeldDown = false;
     }
 
     private void Update()
@@ -111,45 +119,88 @@ public sealed class SpriteMover : MonoBehaviour
         // === LOCK: 先頭で監視 ===
         if (m_MovementLocked)
         {
-            // 入力を読まない＆移動方向ゼロ
             m_MoveDir3D = Vector3.zero;
             m_LastPressed = Dir.None;
-
-            if (m_HideVisualWhenLocked)
-            {
-                HideAllChildren();
-            }
-            return; // 以降の入力/表示処理はスキップ
+            if (m_HideVisualWhenLocked) HideAllChildren();
+            // 押下状態もリセット
+            m_PrevHeldRight = m_PrevHeldLeft = m_PrevHeldUp = m_PrevHeldDown = false;
+            return;
         }
 
-        // --- 離した瞬間の表示 ---
-        if (GetKeyUpRight()) ShowReleaseHorizontal(isLeft: false);
-        if (GetKeyUpLeft()) ShowReleaseHorizontal(isLeft: true);
-        if (GetKeyUpUp()) ShowReleaseVertical(isDown: false);
-        if (GetKeyUpDown()) ShowReleaseVertical(isDown: true);
+        // ---- 今フレームの押下状態（Held）を集約（KB + PadBool）----
+        bool heldR = GetKeyRight();
+        bool heldL = GetKeyLeft();
+        bool heldU = GetKeyUp();
+        bool heldD = GetKeyDown();
 
-        // --- 押下開始の記録 ---
-        if (GetKeyDownRight()) { m_LastPressed = Dir.Right; }
-        if (GetKeyDownLeft()) { m_LastPressed = Dir.Left; }
-        if (GetKeyDownUp()) { m_LastPressed = Dir.Up; }
-        if (GetKeyDownDown()) { m_LastPressed = Dir.Down; }
+        // ---- エッジ検出（Down/Up）※GetKeyUp/Down は使わない ----
+        bool downR = !m_PrevHeldRight && heldR;
+        bool downL = !m_PrevHeldLeft && heldL;
+        bool downU = !m_PrevHeldUp && heldU;
+        bool downD = !m_PrevHeldDown && heldD;
 
-        // --- 押下中の表示（最後に押した方向を優先） ---
-        if (IsAnyHeld())
+        bool upR = m_PrevHeldRight && !heldR;
+        bool upL = m_PrevHeldLeft && !heldL;
+        bool upU = m_PrevHeldUp && !heldU;
+        bool upD = m_PrevHeldDown && !heldD;
+
+        // ---- 押下開始の記録（最後に押した方向）----
+        if (downR) m_LastPressed = Dir.Right;
+        else if (downL) m_LastPressed = Dir.Left;
+        else if (downU) m_LastPressed = Dir.Up;
+        else if (downD) m_LastPressed = Dir.Down;
+
+        // ---- 離した瞬間の表示（1フレームだけ Release を優先表示）----
+        // 直近に押していた方向の離しを最優先。その次に固定順で拾う。
+        Dir releaseDir = Dir.None;
+        if (m_LastPressed == Dir.Right && upR) releaseDir = Dir.Right;
+        else if (m_LastPressed == Dir.Left && upL) releaseDir = Dir.Left;
+        else if (m_LastPressed == Dir.Up && upU) releaseDir = Dir.Up;
+        else if (m_LastPressed == Dir.Down && upD) releaseDir = Dir.Down;
+        else
         {
-            Dir active = GetActiveHeldDir();
-            ShowPressed(active);
+            if (upR) releaseDir = Dir.Right;
+            else if (upL) releaseDir = Dir.Left;
+            else if (upU) releaseDir = Dir.Up;
+            else if (upD) releaseDir = Dir.Down;
         }
 
-        // --- 入力→移動方向ベクトルを計算（物理は FixedUpdate で適用） ---
-        m_MoveDir3D = ReadMoveDirection3D();
+        if (releaseDir != Dir.None)
+        {
+            // Release 優先（このフレームのみ）
+            switch (releaseDir)
+            {
+                case Dir.Right: ShowOnly(m_ReleaseRight); break;
+                case Dir.Left: ShowOnly(m_ReleaseLeft); break;
+                case Dir.Up: ShowOnly(m_ReleaseUp); break;
+                case Dir.Down: ShowOnly(m_ReleaseDown); break;
+            }
+        }
+        else
+        {
+            // ---- 押下中の表示（最後に押した方向を優先）----
+            if (heldR || heldL || heldU || heldD)
+            {
+                Dir active = GetActiveHeldDir(heldR, heldL, heldU, heldD);
+                ShowPressed(active);
+            }
+            // 何も押していなければ、何も表示しない（必要ならデフォルトへ戻す）
+        }
+
+        // ---- 入力→移動方向ベクトル（物理は FixedUpdate で適用）----
+        m_MoveDir3D = ReadMoveDirection3D(heldR, heldL, heldU, heldD);
+
+        // ---- 前フレーム押下状態の更新 ----
+        m_PrevHeldRight = heldR;
+        m_PrevHeldLeft = heldL;
+        m_PrevHeldUp = heldU;
+        m_PrevHeldDown = heldD;
     }
 
     private void FixedUpdate()
     {
         if (m_Rigidbody == null) return;
 
-        // === LOCK: 物理側も完全停止 ===
         if (m_MovementLocked)
         {
 #if UNITY_6000_0_OR_NEWER
@@ -161,87 +212,67 @@ public sealed class SpriteMover : MonoBehaviour
             return;
         }
 
-        // 等速移動（物理）
         if (m_MoveDir3D.sqrMagnitude > 0f)
         {
             Vector3 delta = m_MoveDir3D.normalized * m_MoveSpeed * Time.fixedDeltaTime;
             Vector3 next = m_Rigidbody.position + delta;
-            m_Rigidbody.MovePosition(next); // 壁のColliderにぶつかればここで止まる
+            m_Rigidbody.MovePosition(next);
         }
     }
 
     // ===== 入力→3D方向変換 =====
-    private Vector3 ReadMoveDirection3D()
+    private Vector3 ReadMoveDirection3D(bool heldR, bool heldL, bool heldU, bool heldD)
     {
-        int x = 0;
-        int y = 0;
+        int x = 0, y = 0;
 
-        if(m_IsKeyLeft)
+        if (m_IsKeyLeft)
         {
-            if (GetKeyRight()) y -= 1;
-            if (GetKeyLeft()) y += 1;
-            if (GetKeyUp()) x += 1;
-            if (GetKeyDown()) x -= 1;
+            if (heldR) y -= 1;
+            if (heldL) y += 1;
+            if (heldU) x += 1;
+            if (heldD) x -= 1;
         }
         else
         {
-            if (GetKeyRight()) x += 1;
-            if (GetKeyLeft()) x -= 1;
-            if (GetKeyUp()) y += 1;
-            if (GetKeyDown()) y -= 1;
+            if (heldR) x += 1;
+            if (heldL) x -= 1;
+            if (heldU) y += 1;
+            if (heldD) y -= 1;
         }
+
         if (x == 0 && y == 0) return Vector3.zero;
-
-        if (m_MoveInXZPlane) return new Vector3(x, 0f, y).normalized;
-        else return new Vector3(x, y, 0f).normalized;
+        return m_MoveInXZPlane ? new Vector3(x, 0f, y).normalized
+                               : new Vector3(x, y, 0f).normalized;
     }
 
-    // ===== 入力ヘルパ =====
-    private static bool GetKeyRight() => Input.GetKey(KeyCode.D);
-    private static bool GetKeyLeft() => Input.GetKey(KeyCode.A);
-    private static bool GetKeyUp() => Input.GetKey(KeyCode.W);
-    private static bool GetKeyDown() => Input.GetKey(KeyCode.S);
+    // ===== 入力ヘルパ（Held 判定のみ） =====
+    // ここは KB + PadBool の統合。「押しているか？」だけを見る。
+    private static bool GetKeyRight() => Input.GetKey(KeyCode.D) || PadBool.IsRightHeld(PadBool.DirInputSource.LStick);
+    private static bool GetKeyLeft() => Input.GetKey(KeyCode.A) || PadBool.IsLeftHeld(PadBool.DirInputSource.LStick);
+    private static bool GetKeyUp() => Input.GetKey(KeyCode.W) || PadBool.IsUpHeld(PadBool.DirInputSource.LStick);
+    private static bool GetKeyDown() => Input.GetKey(KeyCode.S) || PadBool.IsDownHeld(PadBool.DirInputSource.LStick);
 
-    private static bool GetKeyDownRight() => Input.GetKeyDown(KeyCode.D);
-    private static bool GetKeyDownLeft() => Input.GetKeyDown(KeyCode.A);
-    private static bool GetKeyDownUp() => Input.GetKeyDown(KeyCode.W);
-    private static bool GetKeyDownDown() => Input.GetKeyDown(KeyCode.S);
-
-    private static bool GetKeyUpRight() => Input.GetKeyUp(KeyCode.D);
-    private static bool GetKeyUpLeft() => Input.GetKeyUp(KeyCode.A);
-    private static bool GetKeyUpUp() => Input.GetKeyUp(KeyCode.W);
-    private static bool GetKeyUpDown() => Input.GetKeyUp(KeyCode.S);
-
-    private static bool IsHeldRight() => GetKeyRight();
-    private static bool IsHeldLeft() => GetKeyLeft();
-    private static bool IsHeldUp() => GetKeyUp();
-    private static bool IsHeldDown() => GetKeyDown();
-
-    private static bool IsAnyHeld() => GetKeyRight() || GetKeyLeft() || GetKeyUp() || GetKeyDown();
-
-    private Dir GetActiveHeldDir()
+    private Dir GetActiveHeldDir(bool heldR, bool heldL, bool heldU, bool heldD)
     {
-        if (m_LastPressed != Dir.None && IsHeld(m_LastPressed))
-            return m_LastPressed;
-
-        if (IsHeldUp()) return Dir.Up;
-        if (IsHeldDown()) return Dir.Down;
-        if (IsHeldRight()) return Dir.Right;
-        if (IsHeldLeft()) return Dir.Left;
-
-        return Dir.None;
-    }
-
-    private static bool IsHeld(Dir dir)
-    {
-        switch (dir)
+        // 直近に押し始めた方向がまだ Held ならそれを優先
+        switch (m_LastPressed)
         {
-            case Dir.Right: return IsHeldRight();
-            case Dir.Left: return IsHeldLeft();
-            case Dir.Up: return IsHeldUp();
-            case Dir.Down: return IsHeldDown();
-            default: return false;
+            case Dir.Right: if (heldR) return Dir.Right; break;
+            case Dir.Left: if (heldL) return Dir.Left; break;
+            case Dir.Up: if (heldU) return Dir.Up; break;
+            case Dir.Down: if (heldD) return Dir.Down; break;
         }
+
+        // どれも不成立なら固定優先度（必要に応じて並び替え可）
+        if (heldU) return Dir.Up;
+        if (heldD) return Dir.Down;
+        if (heldR) return Dir.Right;
+        if (heldL) return Dir.Left;
+        return Dir.None;
+
+        // ローカル関数用
+        //bool heldUp   => heldU;
+        //bool heldDown => heldD;
     }
 
     // ===== 表示制御（反転なし） =====
@@ -257,19 +288,8 @@ public sealed class SpriteMover : MonoBehaviour
         }
     }
 
-    private void ShowReleaseHorizontal(bool isLeft)
-    {
-        ShowOnly(isLeft ? m_ReleaseLeft : m_ReleaseRight);
-    }
-
-    private void ShowReleaseVertical(bool isDown)
-    {
-        ShowOnly(isDown ? m_ReleaseDown : m_ReleaseUp);
-    }
-
     private void ShowOnly(GameObject target)
     {
-        // すべての表示オブジェクトを列挙して排他的に切替
         if (m_PressRight) m_PressRight.SetActive(target == m_PressRight);
         if (m_PressLeft) m_PressLeft.SetActive(target == m_PressLeft);
         if (m_PressUp) m_PressUp.SetActive(target == m_PressUp);
@@ -279,8 +299,7 @@ public sealed class SpriteMover : MonoBehaviour
         if (m_ReleaseLeft) m_ReleaseLeft.SetActive(target == m_ReleaseLeft);
         if (m_ReleaseUp) m_ReleaseUp.SetActive(target == m_ReleaseUp);
         if (m_ReleaseDown) m_ReleaseDown.SetActive(target == m_ReleaseDown);
-
-        // target==null なら単に全非表示になる
+        // target == null なら全非表示
     }
 
     // === LOCK: 便利関数 ================================
@@ -299,14 +318,10 @@ public sealed class SpriteMover : MonoBehaviour
 
     private void ApplyLockStateImmediate()
     {
-        // 入力/表示抑止
         m_MoveDir3D = Vector3.zero;
         m_LastPressed = Dir.None;
+        if (m_HideVisualWhenLocked) HideAllChildren();
 
-        if (m_HideVisualWhenLocked)
-            HideAllChildren();
-
-        // 物理停止
         if (m_Rigidbody != null)
         {
 #if UNITY_6000_0_OR_NEWER
@@ -318,7 +333,7 @@ public sealed class SpriteMover : MonoBehaviour
 
             if (m_FreezeAllPositionOnLock)
             {
-                m_OriginalConstraints = m_Rigidbody.constraints; // 念のため最新を保存
+                m_OriginalConstraints = m_Rigidbody.constraints;
                 m_Rigidbody.constraints =
                     RigidbodyConstraints.FreezePositionX |
                     RigidbodyConstraints.FreezePositionY |
@@ -326,6 +341,9 @@ public sealed class SpriteMover : MonoBehaviour
                     RigidbodyConstraints.FreezeRotation;
             }
         }
+
+        // 押下状態もリセット
+        m_PrevHeldRight = m_PrevHeldLeft = m_PrevHeldUp = m_PrevHeldDown = false;
     }
 
     private void RestoreConstraints()

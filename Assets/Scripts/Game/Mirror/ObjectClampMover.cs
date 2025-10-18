@@ -140,10 +140,50 @@ public sealed class ObjectClampMover : MonoBehaviour
         if (Input.GetKeyDown(m_MoveLeft.Key)) return true;
         if (Input.GetKeyDown(m_MoveUp.Key)) return true;
         if (Input.GetKeyDown(m_MoveDown.Key)) return true;
-        if (m_RotationA != null && m_RotationA.Key != KeyCode.None && Input.GetKeyDown(m_RotationA.Key)) return true;
-        if (m_RotationB != null && m_RotationB.Key != KeyCode.None && Input.GetKeyDown(m_RotationB.Key)) return true;
+        if (m_RotationA != null && m_RotationA.Key != KeyCode.None && (Input.GetKeyDown(m_RotationA.Key) || PadBool.IsYDown())) return true;
+        if (m_RotationB != null && m_RotationB.Key != KeyCode.None && (Input.GetKeyDown(m_RotationB.Key) || PadBool.IsXDown())) return true;
         return false;
     }
+
+    //========================
+    // PadBool 連携ヘルパ
+    //========================
+    private static bool IsPadMoveDown(in MoveKey mk, bool padMode)
+    {
+        // WorldDirection の主要成分で判定（X優先、次にZ）
+        Vector3 d = mk.WorldDirection;
+        if (d.sqrMagnitude <= 0f) return false;
+
+        // どの軸が支配的かで分岐（X or Z）。Yは不使用。
+        float ax = Mathf.Abs(d.x);
+        float az = Mathf.Abs(d.z);
+
+
+        if (ax >= az)
+        {
+            if (d.x > 0f) return padMode ? PadBool.IsUpDown(PadBool.DirInputSource.RStick) : PadBool.IsRightDown(PadBool.DirInputSource.RStick);
+            if (d.x < 0f) return padMode ? PadBool.IsDownDown(PadBool.DirInputSource.RStick) : PadBool.IsLeftDown(PadBool.DirInputSource.RStick);
+        }
+        else
+        {
+            if (d.z > 0f) return padMode ? PadBool.IsLeftDown(PadBool.DirInputSource.RStick) : PadBool.IsUpDown(PadBool.DirInputSource.RStick);
+            if (d.z < 0f) return padMode ? PadBool.IsRightDown(PadBool.DirInputSource.RStick) : PadBool.IsDownDown(PadBool.DirInputSource.RStick);
+        }
+        return false;
+
+    }
+
+    private bool IsPadRotationDown(FixedRotation rot)
+    {
+        // 既存の AnyControlKeyDown と同じ割当：
+        //  - m_RotationA → Y ボタン
+        //  - m_RotationB → X ボタン
+        if (rot == null) return false;
+        if (ReferenceEquals(rot, m_RotationA)) return PadBool.IsYDown();
+        if (ReferenceEquals(rot, m_RotationB)) return PadBool.IsXDown();
+        return false;
+    }
+
 
     //========================
     // ワープ処理（ワールド）
@@ -151,7 +191,9 @@ public sealed class ObjectClampMover : MonoBehaviour
     private void HandleMoveKey(in MoveKey mk)
     {
         if (mk.Key == KeyCode.None) return;
-        if (!Input.GetKeyDown(mk.Key)) return;
+
+        // ▼ここを変更：キーボード Down か、PadBool の方向 Down のどちらかで発火
+        if (!Input.GetKeyDown(mk.Key) && !IsPadMoveDown(in mk, true)) return;
 
         Vector3 dir = mk.WorldDirection;
         if (dir.sqrMagnitude <= 0f) return;
@@ -167,6 +209,7 @@ public sealed class ObjectClampMover : MonoBehaviour
             if (m_Locker) m_Locker.GetLocked();
         }
     }
+
 
     private Vector3 ApplyClampWorld(Vector3 pos)
     {
@@ -186,7 +229,9 @@ public sealed class ObjectClampMover : MonoBehaviour
     private void HandleFixedRotation(FixedRotation rot)
     {
         if (rot == null || rot.Key == KeyCode.None) return;
-        if (!Input.GetKeyDown(rot.Key)) return;
+
+        // ▼ここを変更：キーボード Down か、PadBool の（A=Y / B=X）Down のどちらかで発火
+        if (!Input.GetKeyDown(rot.Key) && !IsPadRotationDown(rot)) return;
 
         int count = (rot.Angles != null) ? rot.Angles.Length : 0;
         if (count <= 0) return;
@@ -210,13 +255,11 @@ public sealed class ObjectClampMover : MonoBehaviour
             idxToApply = Mathf.Clamp(rot._index, 0, last);
         }
 
-        // 適用
         float angle = NormalizeAngle(rot.Angles[idxToApply]);
         SetCommandedAngle(rot.Axis, angle);
         RebuildLocalRotation();
         PlayOneShotSafe(rot.Se);
 
-        // ping-pong 更新
         if (last >= 1)
         {
             int dir = rot._direction;
@@ -234,6 +277,7 @@ public sealed class ObjectClampMover : MonoBehaviour
 
         if (m_Locker) m_Locker.GetLocked();
     }
+
 
     private float GetCommandedAngle(Axis axis) => axis switch
     {

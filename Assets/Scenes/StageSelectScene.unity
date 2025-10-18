@@ -6156,7 +6156,7 @@ MonoBehaviour:
   m_MoveSpeed: 4
   m_MoveInXZPlane: 1
   m_FreezeYPosition: 1
-  m_InvertMoveDirection: 0
+  m_InvertMoveDirection: 1
 --- !u!114 &1245896693
 MonoBehaviour:
   m_ObjectHideFlags: 0

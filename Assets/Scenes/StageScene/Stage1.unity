@@ -3490,8 +3490,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1979403689}
   - component: {fileID: 1979403688}
+  - component: {fileID: 1979403690}
   m_Layer: 0
-  m_Name: EscapeSceneManager
+  m_Name: SceneManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3513,7 +3514,7 @@ MonoBehaviour:
   - m_UseSceneName: 1
     m_SceneName: StageSelectScene
     m_SceneBuildIndex: 0
-    m_Keys: 1b000000
+    m_Key: 0
     m_Async: 0
     m_LoadMode: 0
 --- !u!4 &1979403689
@@ -3525,12 +3526,32 @@ Transform:
   m_GameObject: {fileID: 1979403687}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.6599135, y: -3.4059262, z: 31.033516}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1979403690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1979403687}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7bdb537a8f5e6f04eb828279ac0047bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Key: 32
+  m_HoldSeconds: 1
+  m_FireOnce: 1
+  m_SceneName: Stage1
+  m_LoadMode: 0
+  m_UseUnscaledTime: 1
+  m_ResetOnEnable: 1
+  m_DebugProgressLog: 0
 --- !u!1 &2049993260
 GameObject:
   m_ObjectHideFlags: 0

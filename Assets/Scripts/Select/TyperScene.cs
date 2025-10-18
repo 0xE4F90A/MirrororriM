@@ -14,7 +14,7 @@ public sealed class TyperScene : MonoBehaviour
         [SerializeField] private int m_SceneBuildIndex = -1;
 
         [Header("この配列のどれかが押されたら遷移")]
-        [SerializeField] private KeyCode[] m_Keys = Array.Empty<KeyCode>();
+        [SerializeField] private KeyCode m_Key = KeyCode.None;
 
         [Header("ロード方法")]
         [SerializeField] private bool m_Async = false;
@@ -22,15 +22,7 @@ public sealed class TyperScene : MonoBehaviour
 
         public bool IsTriggeredThisFrame()
         {
-            var keys = m_Keys;
-            for (int i = 0; i < keys.Length; ++i)
-            {
-                if (Input.GetKeyDown(keys[i]))
-                {
-                    return true;
-                }
-            }
-            return false;
+            return Input.GetKeyDown(m_Key) || PadBool.IsStartDown();
         }
 
         public bool TryResolveScene(out string sceneName, out int buildIndex)

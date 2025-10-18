@@ -130,7 +130,7 @@ public sealed class CatGoal : MonoBehaviour
                 }
                 if (mover != null)
                 {
-                    // ★ポイント：自動遷移モード(m_isReturnOn)なら表示は消さずにロックだけ行う
+                    // 自動遷移モード(m_isReturnOn)なら表示は消さずにロックだけ行う
                     bool hideVisual = m_LockHideVisual && !m_isReturnOn;
                     mover.LockMovement(hideVisual);
                 }
@@ -161,7 +161,8 @@ public sealed class CatGoal : MonoBehaviour
             Input.GetKeyDown(KeyCode.Return) ||
             Input.GetKeyDown(KeyCode.KeypadEnter) ||
             Input.GetKeyDown(KeyCode.Space) ||
-            Input.GetKeyDown(KeyCode.Escape);
+            Input.GetKeyDown(KeyCode.Escape) ||
+            PadBool.IsADown() || PadBool.IsBDown();
 
         if(m_isReturnOn) pressed = true;
 

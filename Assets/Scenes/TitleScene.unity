@@ -776,15 +776,15 @@ RectTransform:
   m_GameObject: {fileID: 755386714}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.6, y: 0.6, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.1, y: 1.1, z: 1.1}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 750861715}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -366}
-  m_SizeDelta: {x: 1500, y: 1500}
+  m_SizeDelta: {x: 670, y: 670}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &755386716
 MonoBehaviour:
@@ -806,7 +806,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Texture: {fileID: 2800000, guid: ce1507add1527db438c875928201446f, type: 3}
+  m_Texture: {fileID: 2800000, guid: 0a0c8f449380d8b479a4057f2663ea27, type: 3}
   m_UVRect:
     serializedVersion: 2
     x: 0
@@ -1491,6 +1491,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: MirrororriM_NewTitleLogo
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -1883,6 +1887,10 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_Name
       value: MirrororriM_NewTitleLogo
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8164078558771037576, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_IsActive

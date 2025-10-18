@@ -134,7 +134,7 @@ public sealed class EnterToScene : MonoBehaviour
 
     private bool IsEnterPressedThisFrame()
     {
-        bool l_Pressed = Input.GetKeyDown(m_EnterKey);
+        bool l_Pressed = Input.GetKeyDown(m_EnterKey) || PadBool.IsADown();
         if (!l_Pressed && m_AcceptKeypadEnter)
         {
             l_Pressed |= Input.GetKeyDown(KeyCode.KeypadEnter);

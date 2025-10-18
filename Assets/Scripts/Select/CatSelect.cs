@@ -25,10 +25,14 @@ public sealed class CatSelect : MonoBehaviour
     [SerializeField, Tooltip("移動方向を反転する（必要に応じてON）")]
     private bool m_InvertMoveDirection = false;
 
-    private enum Dir { None, Right, Left, Up, Down }
+    private enum Dir { None = 0, Right = 1, Left = 2, Up = 3, Down = 4 }
 
-    // ラッチ中のキー（離すまで他キー無視）
-    private Dir m_Latched = Dir.None;
+    // 「最後に押されたが、まだ押下中のキー」を選ぶための状態
+    private readonly int[] m_LastDownFrame = new int[5]; // Dir を添字化（None含むが未使用）
+    private readonly bool[] m_IsHeld = new bool[5];
+
+    // 現在の有効方向（表示と移動の両方で使用）
+    private Dir m_ActiveDir = Dir.None;
 
     // 物理移動
     private Rigidbody m_Rigidbody;
@@ -44,47 +48,60 @@ public sealed class CatSelect : MonoBehaviour
         m_Rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         m_Rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotation;
-        if (m_MoveInXZPlane && m_FreezeYPosition) m_Rigidbody.constraints |= RigidbodyConstraints.FreezePositionY;
+        if (m_MoveInXZPlane && m_FreezeYPosition)
+        {
+            m_Rigidbody.constraints |= RigidbodyConstraints.FreezePositionY;
+        }
 
-        // 初期：全OFF→FrontWait_Rを表示
+        // 初期化
+        for (int i = 0; i < m_LastDownFrame.Length; ++i)
+        {
+            m_LastDownFrame[i] = int.MinValue; // まだ一度も押されていない
+            m_IsHeld[i] = false;
+        }
+
+        // 初期：全OFF→FrontWait_Rを表示（お好みで）
         ForceAllInactive();
         SwitchActive(m_FrontWait_R);
     }
 
     private void Update()
     {
-        // 1) ラッチされていないとき：最初に押したキーをラッチ
-        if (m_Latched == Dir.None)
-        {
-            // 同フレーム複数押下はこの優先順でラッチ（必要なら順序を変えてOK）
-            if (GetKeyDownRight()) m_Latched = Dir.Right;
-            else if (GetKeyDownLeft()) m_Latched = Dir.Left;
-            else if (GetKeyDownUp()) m_Latched = Dir.Up;
-            else if (GetKeyDownDown()) m_Latched = Dir.Down;
+        // 押下状態を更新（GetKey / GetKeyDown / GetKeyUp を全部見る）
+        UpdateKeyState(Dir.Right, GetKeyRight(), GetKeyDownRight(), GetKeyUpRight());
+        UpdateKeyState(Dir.Left, GetKeyLeft(), GetKeyDownLeft(), GetKeyUpLeft());
+        UpdateKeyState(Dir.Up, GetKeyUp(), GetKeyDownUp(), GetKeyUpUp());
+        UpdateKeyState(Dir.Down, GetKeyDown(), GetKeyDownDown(), GetKeyUpDown());
 
-            if (m_Latched != Dir.None)
-            {
-                ShowWalkFor(m_Latched);
-            }
-        }
-        // 2) ラッチ中：そのキーだけを受け付ける
-        else
+        // 今押されているキーの中から「最後に押されたもの」を選ぶ
+        Dir selected = SelectLatestHeldDir();
+
+        // 表示（Walk/Wait）を切り替え
+        if (selected != Dir.None)
         {
-            // 押し続けている間はWalkを表示（同一GOなら何もしない）
-            if (IsHeld(m_Latched))
+            if (selected != m_ActiveDir)
             {
-                ShowWalkFor(m_Latched);
+                ShowWalkFor(selected);
+                m_ActiveDir = selected;
             }
             else
             {
-                // 離された瞬間：対応するWaitを表示し、ラッチ解除
-                ShowWaitFor(m_Latched);
-                m_Latched = Dir.None;
+                // 同じ方向を継続押下中なら毎フレーム同じWalkを維持
+                ShowWalkFor(m_ActiveDir);
+            }
+        }
+        else
+        {
+            // 何も押されていない：直前の方向に対応するWaitを表示
+            if (m_ActiveDir != Dir.None)
+            {
+                ShowWaitFor(m_ActiveDir);
+                m_ActiveDir = Dir.None;
             }
         }
 
-        // 入力→移動ベクトル（デフォは左右のみ移動。上/下は見た目専用）
-        m_MoveDir3D = ReadMoveDirection3D();
+        // 移動ベクトル（表示と同じ基準＝m_ActiveDir で決定）
+        m_MoveDir3D = DirToMoveVector(m_ActiveDir);
     }
 
     private void FixedUpdate()
@@ -93,49 +110,86 @@ public sealed class CatSelect : MonoBehaviour
 
         if (m_MoveDir3D.sqrMagnitude > 0f)
         {
-            float sign = m_InvertMoveDirection ? 1f : -1f;
-            Vector3 delta = m_MoveDir3D.normalized * (m_MoveSpeed * sign) * Time.fixedDeltaTime;
+            Vector3 dir = m_MoveDir3D.normalized;
+            if (m_InvertMoveDirection) dir = -dir; // 反転はここで
+
+            Vector3 delta = dir * (m_MoveSpeed * Time.fixedDeltaTime);
             m_Rigidbody.MovePosition(m_Rigidbody.position + delta);
         }
     }
 
     //==== 入力ヘルパ ====
-    private static bool GetKeyRight() => Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D);
-    private static bool GetKeyLeft() => Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A);
-    private static bool GetKeyUp() => Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W);
-    private static bool GetKeyDown() => Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S);
+    private static bool GetKeyRight() => Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) || PadBool.IsRight();
+    private static bool GetKeyLeft() => Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) || PadBool.IsLeft();
+    private static bool GetKeyUp() => Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W) || PadBool.IsUp();
+    private static bool GetKeyDown() => Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S) || PadBool.IsDown();
 
-    private static bool GetKeyDownRight() => Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D);
-    private static bool GetKeyDownLeft() => Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A);
-    private static bool GetKeyDownUp() => Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W);
-    private static bool GetKeyDownDown() => Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S);
+    private static bool GetKeyDownRight() => Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D) || PadBool.IsRight();
+    private static bool GetKeyDownLeft() => Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A) || PadBool.IsLeft();
+    private static bool GetKeyDownUp() => Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W) || PadBool.IsUp();
+    private static bool GetKeyDownDown() => Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S) || PadBool.IsDown();
 
-    private static bool IsHeld(Dir d)
+    private static bool GetKeyUpRight() => Input.GetKeyUp(KeyCode.RightArrow) || Input.GetKeyUp(KeyCode.D);
+    private static bool GetKeyUpLeft() => Input.GetKeyUp(KeyCode.LeftArrow) || Input.GetKeyUp(KeyCode.A);
+    private static bool GetKeyUpUp() => Input.GetKeyUp(KeyCode.UpArrow) || Input.GetKeyUp(KeyCode.W);
+    private static bool GetKeyUpDown() => Input.GetKeyUp(KeyCode.DownArrow) || Input.GetKeyUp(KeyCode.S);
+
+    private static int Idx(Dir d) => (int)d;
+
+    private void UpdateKeyState(Dir d, bool held, bool down, bool up)
     {
-        switch (d)
+        int i = Idx(d);
+
+        if (down)
         {
-            case Dir.Right: return GetKeyRight();
-            case Dir.Left: return GetKeyLeft();
-            case Dir.Up: return GetKeyUp();
-            case Dir.Down: return GetKeyDown();
-            default: return false;
+            m_LastDownFrame[i] = Time.frameCount; // 押されたフレームを記録
+        }
+
+        // 現在押下中かどうかは毎フレーム上書き
+        if (up) m_IsHeld[i] = false;
+        else m_IsHeld[i] = held;
+    }
+
+    private Dir SelectLatestHeldDir()
+    {
+        // 押下中の中で LastDownFrame が最大（＝最後に押された）のものを選ぶ
+        Dir best = Dir.None;
+        int bestFrame = int.MinValue;
+
+        // 右→左→上→下の順で同時押し同フレームのタイブレーク（最後に評価した方を優先したければ >= にする）
+        Check(Dir.Right);
+        Check(Dir.Left);
+        Check(Dir.Up);
+        Check(Dir.Down);
+        return best;
+
+        void Check(Dir d)
+        {
+            int i = Idx(d);
+            if (!m_IsHeld[i]) return;
+            if (m_LastDownFrame[i] > bestFrame) // 同フレーム同時押しは評価順で決まる
+            {
+                best = d;
+                bestFrame = m_LastDownFrame[i];
+            }
         }
     }
 
-    private Vector3 ReadMoveDirection3D()
+    private Vector3 DirToMoveVector(Dir d)
     {
-        // 右/左のみ移動（上/下は見た目だけ）
-        int x = 0;
-        if (GetKeyRight()) x += 1;
-        if (GetKeyLeft()) x -= 1;
-
-        if (x == 0) return Vector3.zero;
-
-        if (m_MoveInXZPlane) return new Vector3(x, 0f, 0f).normalized;
-        else return new Vector3(x, 0f, 0f).normalized;
+        // 上/下は見た目だけに使用し、移動は左右のみ
+        switch (d)
+        {
+            case Dir.Right:
+                return m_MoveInXZPlane ? new Vector3(+1f, 0f, 0f) : new Vector3(+1f, 0f, 0f);
+            case Dir.Left:
+                return m_MoveInXZPlane ? new Vector3(-1f, 0f, 0f) : new Vector3(-1f, 0f, 0f);
+            default:
+                return Vector3.zero;
+        }
     }
 
-    //==== 表示：指定マッピング ====
+    //==== 表示：指定マッピング（ご要望に合わせてこのまま） ====
 
     private void ShowWalkFor(Dir d)
     {
@@ -164,7 +218,6 @@ public sealed class CatSelect : MonoBehaviour
     private void SwitchActive(GameObject target)
     {
         if (target == null) return;
-
         if (m_CurrentActive == target) return; // 同一なら何もしない
 
         if (m_CurrentActive != null) m_CurrentActive.SetActive(false);
