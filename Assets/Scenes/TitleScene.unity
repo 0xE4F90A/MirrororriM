@@ -1210,9 +1210,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c8f7fa737da7e94cb71598702b922b7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_TiltDegrees: 8
+  m_TiltDegrees: 10
   m_SmoothSpeed: 1
   m_ReCaptureBaseOnEnable: 1
+--- !u!4 &1115772643 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+  m_PrefabInstance: {fileID: 1862021354}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1143362685
 GameObject:
   m_ObjectHideFlags: 0
@@ -1426,6 +1431,76 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1305656556}
   m_CullTransparentMesh: 1
+--- !u!1001 &1531173053
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 1115772643}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071067
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_CastShadows
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 342e126dfbdbacc4e87fe30eb482cb97, type: 2}
+    - target: {fileID: 919132149155446097, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+      propertyPath: m_Name
+      value: MirrororriM_NewTitleLogo
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+--- !u!4 &1531173054 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: b8c6eac26f54cf44e82db8ab794baa2f, type: 3}
+  m_PrefabInstance: {fileID: 1531173053}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1759169948
 GameObject:
   m_ObjectHideFlags: 0
@@ -1791,11 +1866,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -7635826562936255635, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_CastShadows
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7635826562936255635, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_DynamicOccludee
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -7635826562936255635, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+      propertyPath: m_LightProbeUsage
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -7635826562936255635, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_StaticShadowCaster
@@ -1803,15 +1882,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_Name
-      value: MirrororriM_NewTitle
+      value: MirrororriM_NewTitleLogo
+      objectReference: {fileID: 0}
+    - target: {fileID: 8164078558771037576, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8164078558771037576, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_RemovedGameObjects:
+    - {fileID: 8164078558771037576, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: f398f76730c255b4285db138f10a2d51, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1531173054}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f398f76730c255b4285db138f10a2d51, type: 3}
       insertIndex: -1
