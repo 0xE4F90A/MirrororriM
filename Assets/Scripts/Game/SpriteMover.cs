@@ -46,6 +46,9 @@ public sealed class SpriteMover : MonoBehaviour
     [SerializeField, Tooltip("ロック時、Rigidbody の位置を全軸フリーズする（解除で元に戻す）")]
     private bool m_FreezeAllPositionOnLock = true;
 
+    [SerializeField, Tooltip("ポーズ中は入力を無効化したい場合ここに割り当て。未設定なら常に操作可能")]
+    private PauseMenu m_Pause;
+
     /// <summary>外部から移動ロックを有効化</summary>
     public void LockMovement(bool hideVisual = true)
     {
@@ -112,10 +115,21 @@ public sealed class SpriteMover : MonoBehaviour
 
         // 前フレーム押下状態の初期化
         m_PrevHeldRight = m_PrevHeldLeft = m_PrevHeldUp = m_PrevHeldDown = false;
+
+        // PauseMenuが未設定なら同じGameObjectから拾う
+        if (!m_Pause) m_Pause = GetComponent<PauseMenu>();
+    }
+
+    private void Start()
+    {
+        m_Pause = GetComponent<PauseMenu>();
     }
 
     private void Update()
     {
+        if (m_Pause != null && m_Pause.GetVisible())
+            return;
+
         // === LOCK: 先頭で監視 ===
         if (m_MovementLocked)
         {

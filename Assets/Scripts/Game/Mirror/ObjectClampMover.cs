@@ -88,12 +88,20 @@ public sealed class ObjectClampMover : MonoBehaviour
     private Quaternion m_BaseLocalRotation; // 合成用の基準（自身の起動時ローカル回転）
     private float m_CmdAngleX, m_CmdAngleY, m_CmdAngleZ;
 
+
+    [SerializeField, Tooltip("ポーズ中は入力を無効化したい場合ここに割り当て。未設定なら常に操作可能")]
+    private PauseMenu m_Pause;
+
     //========================
     // ライフサイクル
     //========================
     private void Awake()
     {
         if (!m_AudioSource) m_AudioSource = GetComponent<AudioSource>();
+
+        // PauseMenuが未設定なら同じGameObjectから拾う
+        if (!m_Pause) m_Pause = GetComponent<PauseMenu>();
+        
     }
 
     private void Start()
@@ -106,6 +114,10 @@ public sealed class ObjectClampMover : MonoBehaviour
 
     private void Update()
     {
+        if (m_Pause != null && m_Pause.GetVisible())
+            return;
+        
+
         // ロック中は操作ブロック
         if (m_Locker && m_Locker.GetLocked())
         {
@@ -192,7 +204,7 @@ public sealed class ObjectClampMover : MonoBehaviour
     {
         if (mk.Key == KeyCode.None) return;
 
-        // ▼ここを変更：キーボード Down か、PadBool の方向 Down のどちらかで発火
+        // ここを変更：キーボード Down か、PadBool の方向 Down のどちらかで発火
         if (!Input.GetKeyDown(mk.Key) && !IsPadMoveDown(in mk, true)) return;
 
         Vector3 dir = mk.WorldDirection;

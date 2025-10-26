@@ -17,7 +17,7 @@ public sealed class HoldLoadScene : MonoBehaviour
 {
     [Header("=== 入力 ===")]
     [SerializeField, Tooltip("長押しを検出するキー")]
-    private KeyCode m_Key = KeyCode.Escape;
+    private KeyCode m_Key = KeyCode.B;
 
     [SerializeField, Min(0.05f), Tooltip("この秒数以上押し続けたらロード")]
     private float m_HoldSeconds = 2.0f;
